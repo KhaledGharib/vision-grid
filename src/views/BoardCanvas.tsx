@@ -1,29 +1,76 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 import type { BoardElement } from '../types';
+import { RING_TARGET_HOURS } from '../types';
 import { useImage } from '../hooks/useImage';
 import { bounds, HANDLES, resizeBox, snapBox, type Guide, type HandleId } from '../canvas';
 import { daysUntil } from '../dates';
 
 /* ---------------- element renderers ---------------- */
 
+/** Circular progress ring driven by hours actually invested. */
+function Ring({ pct, size = 40 }: { pct: number; size?: number }) {
+  const r = (size - 5) / 2;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg className="ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,.18)" strokeWidth="3" />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke="var(--accent)" strokeWidth="3" strokeLinecap="round"
+        strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(1, pct / 100))}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+      <text
+        x={size / 2} y={size / 2} textAnchor="middle"
+        dominantBaseline="central" dy="0.02em"
+        fill="#fff" fontSize={size * 0.32} fontWeight="700"
+      >
+        {Math.round(pct)}
+      </text>
+    </svg>
+  );
+}
+
 function VisionEl({ e }: { e: BoardElement }) {
   const url = useImage(e.imageId);
-  const progress = useStore((s) => s.visionProgress)(e.id);
-  const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
+  const minutes = useStore((s) => s.visionMinutes)(e.id);
+  const starve = useStore((s) => s.visionStarvation)(e.id);
+  const idle = useStore((s) => s.visionIdleDays)(e.id);
   const days = daysUntil(e.targetDate ?? null);
+
+  const hours = minutes / 60;
+  const ringPct = Math.min(100, (hours / RING_TARGET_HOURS) * 100);
+  // starving visions desaturate and dim — no nag, just an honest signal
+  const gray = Math.round(starve * 100);
+  const dim = 1 - starve * 0.45;
+
   return (
     <div className="el-vision" style={{ borderRadius: e.radius ?? 12 }}>
       {url ? (
-        <img src={url} alt="" style={{ objectFit: e.fit ?? 'cover' }} draggable={false} />
+        <img
+          src={url} alt="" draggable={false}
+          style={{ objectFit: e.fit ?? 'cover', filter: `grayscale(${gray}%) brightness(${dim})` }}
+        />
       ) : (
         <div className="el-noimg">🎯</div>
       )}
+
+      {minutes > 0 && <div className="el-ring"><Ring pct={ringPct} /></div>}
+
+      {starve >= 1 && (
+        <div className="starved-badge" title={idle === null
+          ? 'Never fed — no focus time yet'
+          : `${idle} days without attention`}>
+          starving
+        </div>
+      )}
+
       <div className="el-cap">
         <span className="el-cap-title">{e.title}</span>
         <span className="el-cap-meta">
-          {progress.total > 0 ? `${pct}%` : ''}
-          {days !== null && days >= 0 ? ` · ${days}d` : ''}
+          {minutes > 0 ? (hours >= 1 ? `${hours.toFixed(1)}h` : `${minutes}m`) : ''}
+          {days !== null && days >= 0 ? `${minutes > 0 ? ' · ' : ''}${days}d` : ''}
         </span>
       </div>
     </div>

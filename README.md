@@ -58,13 +58,44 @@ An **infinite canvas** (pan/zoom), not a fixed page.
 - **Month** — max 3 goals, each must select a vision. The form disappears at 3/3.
 - **Week** — max 2 goals, each must select a month goal. Add day tasks inline.
 - **Today** — tasks with vision thumbnail + full thread. Star up to 3 MITs.
+- **Review** — the weekly reset (see below).
+
+## v0.2 — effort, attention, and honesty
+
+**Focus timer.** Every task has a `▶ Focus` button that runs a 25-minute block and
+counts down in place; it turns red in overtime. Stopping banks a `FocusSession`.
+Sessions under a minute are discarded — that's noise, not effort. `+` logs time
+you spent away from the app. Today's header shows total minutes focused.
+
+**Progress rings.** Vision tiles show a ring driven by **hours actually invested**,
+not tasks checked. Tasks are easy to check; time is not. 20 focused hours = a full ring.
+
+**Starving visions.** A vision with no focus time gradually **desaturates and dims**,
+reaching full grayscale plus a `STARVING` badge after 30 days. No notification, no
+guilt text — you just open the board and see which dreams are going gray. A vision
+that has never been fed measures from its creation date, not from epoch.
+
+**Weekly review.** Every unfinished week goal forces one of three choices:
+
+| Action | Effect |
+|---|---|
+| **Carry** | Moves to this week. Blocked after 2 carries — the app stops letting you lie. |
+| **Shrink** | Rewrite it smaller and honestly; resets the carry count. |
+| **Drop** | Requires a one-line reason; moves to the **Graveyard**. |
+
+The review also shows where your attention actually went (minutes per vision, sorted,
+with "never fed" called out) and saves notes to your future self. The Review tab
+carries a dot while the week's review is still pending.
+
+The Graveyard is not deleted history. If one vision keeps filling it, that vision
+probably isn't yours.
 
 Multiple boards are supported, but only the **active** board's goals can receive tasks —
 focus is enforced by design.
 
 ## Data
 
-- App state → `localStorage`, key `vision-grid:state:v1`
+- App state → `localStorage`, key `vision-grid:state:v1` (schema v3, auto-migrates)
 - Images → IndexedDB `vision-grid-images`, stored as blobs (never file paths — those break)
 
 Both live behind `src/storage.ts`. Swapping in Tauri + SQLite later means rewriting
@@ -97,9 +128,9 @@ src/
 
 ## Roadmap
 
-- **v0.2** — focus timer, progress rings, starving visions (fade to gray after 30 days), Sunday review with carry/shrink/drop
+- ~~**v0.2** — focus timer, progress rings, starving visions, weekly review~~ ✅
 - **v0.3** — social: pair with a friend, Circle tab, task-specific nudges (3/day budget), cheers
-- **v0.4** — tray widget, fullscreen focus mode, wallpaper export, Graveyard view
+- **v0.4** — tray widget, fullscreen focus mode, wallpaper export, desktop packaging
 
 ## Desktop packaging (later)
 
