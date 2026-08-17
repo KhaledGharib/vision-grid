@@ -2,6 +2,7 @@
 
 import { useStore } from './store';
 import { bounds } from './canvas';
+import { FONTS, isRtlText } from './types';
 import { imageUrl } from './storage';
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -107,10 +108,36 @@ export async function exportBoardPng(scale = 2) {
       }
     }
 
+    if (e.kind === 'draw' && e.points?.length) {
+      ctx.strokeStyle = e.stroke ?? '#f0b429';
+      ctx.lineWidth = e.strokeWidth ?? 4;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      const P = e.points.map((p) => ({ x: p.x * e.w, y: p.y * e.h }));
+      ctx.beginPath();
+      ctx.moveTo(P[0].x, P[0].y);
+      if (P.length === 2) {
+        ctx.lineTo(P[1].x, P[1].y);
+      } else {
+        for (let i = 1; i < P.length - 1; i++) {
+          const mx = (P[i].x + P[i + 1].x) / 2;
+          const my = (P[i].y + P[i + 1].y) / 2;
+          ctx.quadraticCurveTo(P[i].x, P[i].y, mx, my);
+        }
+        const last = P[P.length - 1];
+        ctx.lineTo(last.x, last.y);
+      }
+      ctx.stroke();
+    }
+
     if (e.kind === 'text') {
       ctx.fillStyle = e.color ?? '#e6e9ef';
       const style = e.italic ? 'italic ' : '';
-      ctx.font = `${style}${e.fontWeight ?? 400} ${e.fontSize ?? 22}px ui-sans-serif, Segoe UI, system-ui`;
+      const fam = FONTS.find((f) => f.id === (e.fontFamily ?? 'sans'))?.css
+        ?? 'ui-sans-serif, Segoe UI, system-ui';
+      ctx.font = `${style}${e.fontWeight ?? 400} ${e.fontSize ?? 22}px ${fam}`;
+      const rtl = e.dir === 'rtl' || (e.dir !== 'ltr' && isRtlText(e.text ?? ''));
+      ctx.direction = rtl ? 'rtl' : 'ltr';
       ctx.textBaseline = 'top';
       const align = e.align ?? 'left';
       ctx.textAlign = align === 'center' ? 'center' : align === 'right' ? 'right' : 'left';

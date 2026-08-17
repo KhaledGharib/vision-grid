@@ -3,8 +3,11 @@
 
 export type Visibility = 'private' | 'friends' | 'active-only';
 export type GoalStatus = 'active' | 'done' | 'dropped';
-export type ElementKind = 'vision' | 'text' | 'shape';
+export type ElementKind = 'vision' | 'text' | 'shape' | 'draw';
 export type ShapeKind = 'rect' | 'ellipse' | 'line';
+export type TextDir = 'auto' | 'ltr' | 'rtl';
+/** Active canvas tool. 'select' is the normal pointer. */
+export type Tool = 'select' | 'pen' | 'eraser';
 
 export interface User {
   id: string;
@@ -53,12 +56,20 @@ export interface BoardElement {
   color?: string;
   align?: 'left' | 'center' | 'right';
   italic?: boolean;
+  /** 'auto' detects Arabic/Hebrew per string; explicit rtl/ltr overrides. */
+  dir?: TextDir;
+  fontFamily?: string;
 
   // shape-only (kind === 'shape')
   shape?: ShapeKind;
   fill?: string;
   stroke?: string;
   strokeWidth?: number;
+
+  // draw-only (kind === 'draw') — freehand ink
+  /** Normalised points (0..1 within the element box) so strokes scale on resize. */
+  points?: { x: number; y: number }[];
+  smooth?: boolean;
 
   createdAt: string;
 }
@@ -123,6 +134,18 @@ export const SPAWN_H = 900;
 export const SNAP_TOLERANCE = 6;
 export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 4;
+
+/** Arabic-capable font stacks. First entry is the default. */
+export const FONTS = [
+  { id: 'sans', label: 'Sans', css: "'Segoe UI', 'Noto Sans Arabic', Tahoma, ui-sans-serif, system-ui, sans-serif" },
+  { id: 'serif', label: 'Serif', css: "'Noto Naskh Arabic', 'Times New Roman', Georgia, serif" },
+  { id: 'mono', label: 'Mono', css: "'Cascadia Mono', 'Noto Sans Mono', Consolas, monospace" },
+];
+
+/** True when the string contains Arabic, Hebrew, or other RTL script. */
+export function isRtlText(s: string): boolean {
+  return /[\u0591-\u07FF\u0860-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/.test(s);
+}
 
 export const PALETTE = [
   '#f0b429', '#f87171', '#34d399', '#60a5fa', '#c084fc',

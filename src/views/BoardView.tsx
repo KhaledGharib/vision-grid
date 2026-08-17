@@ -5,6 +5,7 @@ import Inspector from './Inspector';
 import Minimap from './Minimap';
 import { exportBoardPng } from '../export';
 import { bounds } from '../canvas';
+import { PALETTE } from '../types';
 
 export default function BoardView() {
   const addVision = useStore((s) => s.addVision);
@@ -17,6 +18,11 @@ export default function BoardView() {
   const zoom = useStore((s) => s.zoom);
   const setZoom = useStore((s) => s.setZoom);
   const setPan = useStore((s) => s.setPan);
+  const tool = useStore((s) => s.tool);
+  const setTool = useStore((s) => s.setTool);
+  const penColor = useStore((s) => s.penColor);
+  const penWidth = useStore((s) => s.penWidth);
+  const setPen = useStore((s) => s.setPen);
   const zoomAt = useStore((s) => s.zoomAt);
   const select = useStore((s) => s.select);
   const selection = useStore((s) => s.selection);
@@ -77,10 +83,13 @@ export default function BoardView() {
       if (e.shiftKey && e.key === '!') { e.preventDefault(); fitToScreen(false); return; }
       if (e.shiftKey && e.key === '@') { e.preventDefault(); fitToScreen(true); return; }
       if (e.shiftKey && e.key === ')') { e.preventDefault(); zoomCenter(1 / zoom); return; }
+      if (!mod && e.key.toLowerCase() === 'v') { setTool('select'); return; }
+      if (!mod && e.key.toLowerCase() === 'p') { setTool('pen'); return; }
+      if (!mod && e.key.toLowerCase() === 'e') { setTool('eraser'); return; }
       if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); select(els.map((x) => x.id)); return; }
       if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return; }
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected(); return; }
-      if (e.key === 'Escape') { select([]); return; }
+      if (e.key === 'Escape') { select([]); setTool('select'); return; }
 
       // arrow nudge
       if (e.key.startsWith('Arrow') && selection.length) {
@@ -98,7 +107,7 @@ export default function BoardView() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [els, selection, undo, redo, select, duplicateSelected, deleteSelected, updateMany, commit]);
+  }, [els, selection, undo, redo, select, duplicateSelected, deleteSelected, updateMany, commit, setTool]);
 
   return (
     <div className="board-wrap"
@@ -107,6 +116,48 @@ export default function BoardView() {
       onPaste={(e) => void onFiles(e.clipboardData.files)}
     >
       <div className="board-toolbar">
+        {/* tools */}
+        <button
+          className={tool === 'select' ? 'on' : ''}
+          title="Select / move (V)"
+          onClick={() => setTool('select')}
+        >➚</button>
+        <button
+          className={tool === 'pen' ? 'on' : ''}
+          title="Draw freehand (P)"
+          onClick={() => setTool('pen')}
+        >✏️</button>
+        <button
+          className={tool === 'eraser' ? 'on' : ''}
+          title="Erase — click any element (E)"
+          onClick={() => setTool('eraser')}
+        >🧽</button>
+
+        {tool === 'pen' && (
+          <>
+            <span className="tb-sep" />
+            <div className="pen-colors">
+              {PALETTE.slice(0, 8).map((c) => (
+                <button
+                  key={c}
+                  className={`pen-sw${penColor === c ? ' on' : ''}`}
+                  style={{ background: c }}
+                  title={c}
+                  onClick={() => setPen({ color: c })}
+                />
+              ))}
+            </div>
+            <input
+              type="range" min={1} max={30} value={penWidth}
+              onChange={(e) => setPen({ width: +e.target.value })}
+              style={{ width: 90 }}
+              title={`Brush size: ${penWidth}px`}
+            />
+            <span className="muted small" style={{ minWidth: 30 }}>{penWidth}px</span>
+          </>
+        )}
+
+        <span className="tb-sep" />
         <button className="primary" onClick={() => fileRef.current?.click()}>🖼 Image</button>
         <span className="tb-sep" />
         <button onClick={() => addText('heading')}>T Heading</button>

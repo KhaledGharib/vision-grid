@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { nanoid } from 'nanoid';
 import { useStore } from '../store';
 import { putImage } from '../storage';
-import { PALETTE } from '../types';
+import { FONTS, PALETTE } from '../types';
 
 export default function Inspector() {
   const els = useStore((s) => s.boardElements)();
@@ -43,10 +43,12 @@ export default function Inspector() {
             {[...els].reverse().map((e) => (
               <button key={e.id} className="layer" onClick={() => select([e.id])}>
                 <span className="layer-ico">
-                  {e.kind === 'vision' ? '🖼' : e.kind === 'text' ? 'T' : '◻'}
+                  {e.kind === 'vision' ? '🖼' : e.kind === 'text' ? 'T'
+                    : e.kind === 'draw' ? '✏️' : '◻'}
                 </span>
                 <span className="layer-name">
-                  {e.kind === 'vision' ? e.title : e.kind === 'text' ? e.text : e.shape}
+                  {e.kind === 'vision' ? e.title : e.kind === 'text' ? e.text
+                    : e.kind === 'draw' ? 'drawing' : e.shape}
                 </span>
                 {e.locked && <span>🔒</span>}
               </button>
@@ -75,7 +77,8 @@ export default function Inspector() {
 
       {one && (
         <>
-          <h4>{one.kind === 'vision' ? 'Vision' : one.kind === 'text' ? 'Text' : 'Shape'}</h4>
+          <h4>{one.kind === 'vision' ? 'Vision' : one.kind === 'text' ? 'Text'
+            : one.kind === 'draw' ? 'Drawing' : 'Shape'}</h4>
 
           {one.kind === 'vision' && (
             <>
@@ -161,6 +164,47 @@ export default function Inspector() {
                   ))}
                 </div>
               </div>
+              <div className="field">
+                <label>Font</label>
+                <div className="btn-row">
+                  {FONTS.map((f) => (
+                    <button key={f.id} className={(one.fontFamily ?? 'sans') === f.id ? 'on' : ''}
+                      onClick={() => updateEl(one.id, { fontFamily: f.id })}>{f.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="field">
+                <label>Direction — العربية</label>
+                <div className="btn-row">
+                  <button className={(one.dir ?? 'auto') === 'auto' ? 'on' : ''}
+                    title="Detect Arabic automatically"
+                    onClick={() => updateEl(one.id, { dir: 'auto' })}>Auto</button>
+                  <button className={one.dir === 'ltr' ? 'on' : ''}
+                    onClick={() => updateEl(one.id, { dir: 'ltr' })}>LTR</button>
+                  <button className={one.dir === 'rtl' ? 'on' : ''}
+                    onClick={() => updateEl(one.id, { dir: 'rtl' })}>RTL</button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {one.kind === 'draw' && (
+            <>
+              <div className="field">
+                <label>Ink colour</label>
+                <div className="swatches">
+                  {PALETTE.map((c) => (
+                    <button key={c} className={`sw${one.stroke === c ? ' on' : ''}`}
+                      style={{ background: c }} onClick={() => updateEl(one.id, { stroke: c })} />
+                  ))}
+                </div>
+              </div>
+              <div className="field">
+                <label>Thickness — {one.strokeWidth ?? 4}px</label>
+                <input type="range" min={1} max={30} value={one.strokeWidth ?? 4}
+                  onChange={(e) => updateEl(one.id, { strokeWidth: +e.target.value }, false)} />
+              </div>
+              <p className="muted small">{one.points?.length ?? 0} points</p>
             </>
           )}
 

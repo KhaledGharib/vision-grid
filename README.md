@@ -38,6 +38,22 @@ An **infinite canvas** (pan/zoom), not a fixed page.
 - **Images** → these become **visions**, the only elements goals can attach to
 - **Text** → Heading / Body / Quote presets; double-click to edit inline
 - **Shapes** → rectangle, ellipse, line
+- **Drawings** → freehand pen strokes
+
+**Tools** — `V` select · `P` pen · `E` eraser · `Esc` back to select
+
+**Drawing.** The pen draws real freehand ink: hold and drag anywhere on the canvas.
+Strokes are smoothed through quadratic curves, stored as normalised points so they
+scale cleanly when resized, and rendered as SVG (never bitmaps). Pick colour and
+thickness from the toolbar while the pen is active, or restyle any stroke later from
+the inspector. The eraser removes whole elements on click.
+
+**Arabic / RTL.** Text elements auto-detect Arabic, Hebrew and other RTL scripts and
+flip direction and alignment automatically. Override per element with Auto / LTR / RTL
+in the inspector, and choose an Arabic-capable font (Sans / Serif / Mono — Noto Sans
+Arabic, Noto Naskh Arabic). Alignment uses logical `start`/`end`, so "left" means the
+leading edge in whichever direction the text runs. PNG export honours direction and
+font too.
 
 **Inspector** (adapts to selection)
 | Selection | Controls |

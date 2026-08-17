@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 import type { BoardElement } from '../types';
+import { FONTS, isRtlText } from '../types';
 import { useImage } from '../hooks/useImage';
 import { bounds, HANDLES, resizeBox, snapBox, type Guide, type HandleId } from '../canvas';
 import { daysUntil } from '../dates';
@@ -98,14 +99,55 @@ function TextEl({ e, editing, onCommit }: { e: BoardElement; editing: boolean; o
       contentEditable={editing}
       suppressContentEditableWarning
       onBlur={(ev) => onCommit(ev.currentTarget.textContent ?? '')}
+      dir={e.dir && e.dir !== 'auto' ? e.dir : (isRtlText(e.text ?? '') ? 'rtl' : 'ltr')}
       style={{
         fontSize: e.fontSize, fontWeight: e.fontWeight, color: e.color,
-        textAlign: e.align, fontStyle: e.italic ? 'italic' : 'normal',
+        // 'left' means "leading edge" — in RTL that's the right side
+        textAlign: e.align === 'left' ? 'start' : e.align === 'right' ? 'end' : e.align,
+        fontStyle: e.italic ? 'italic' : 'normal',
+        fontFamily: FONTS.find((f) => f.id === (e.fontFamily ?? 'sans'))?.css,
         cursor: editing ? 'text' : 'inherit',
       }}
     >
       {e.text}
     </div>
+  );
+}
+
+/** Catmull-Rom-ish smoothing: quadratic segments through midpoints. */
+export function strokePath(pts: { x: number; y: number }[], w: number, h: number) {
+  if (!pts.length) return '';
+  const P = pts.map((p) => ({ x: p.x * w, y: p.y * h }));
+  if (P.length === 1) return `M ${P[0].x} ${P[0].y} l 0.01 0`;
+  if (P.length === 2) return `M ${P[0].x} ${P[0].y} L ${P[1].x} ${P[1].y}`;
+  let d = `M ${P[0].x} ${P[0].y}`;
+  for (let i = 1; i < P.length - 1; i++) {
+    const mx = (P[i].x + P[i + 1].x) / 2;
+    const my = (P[i].y + P[i + 1].y) / 2;
+    d += ` Q ${P[i].x} ${P[i].y} ${mx} ${my}`;
+  }
+  const last = P[P.length - 1];
+  d += ` L ${last.x} ${last.y}`;
+  return d;
+}
+
+function DrawEl({ e }: { e: BoardElement }) {
+  const pts = e.points ?? [];
+  return (
+    <svg
+      width="100%" height="100%" viewBox={`0 0 ${e.w} ${e.h}`}
+      preserveAspectRatio="none" style={{ display: 'block', overflow: 'visible' }}
+    >
+      <path
+        d={strokePath(pts, e.w, e.h)}
+        fill="none"
+        stroke={e.stroke ?? '#f0b429'}
+        strokeWidth={e.strokeWidth ?? 4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
   );
 }
 
@@ -143,12 +185,19 @@ export default function BoardCanvas() {
   const commit = useStore((s) => s.commit);
   const panBy = useStore((s) => s.panBy);
   const zoomAt = useStore((s) => s.zoomAt);
+  const tool = useStore((s) => s.tool);
+  const penColor = useStore((s) => s.penColor);
+  const penWidth = useStore((s) => s.penWidth);
+  const addStroke = useStore((s) => s.addStroke);
+  const deleteSelected = useStore((s) => s.deleteSelected);
 
   const [drag, setDrag] = useState<DragState>(null);
   const [guides, setGuides] = useState<Guide[]>([]);
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [editingText, setEditingText] = useState<string | null>(null);
   const [spaceDown, setSpaceDown] = useState(false);
+  const [ink, setInk] = useState<{ x: number; y: number }[] | null>(null);
+  const inkRef = useRef<{ x: number; y: number }[]>([]);
   const vpRef = useRef<HTMLDivElement>(null);
 
   const selEls = els.filter((e) => selection.includes(e.id));
@@ -197,6 +246,18 @@ export default function BoardCanvas() {
 
   const onElPointerDown = (ev: React.PointerEvent, el: BoardElement) => {
     if (editingText === el.id || spaceDown) return;
+
+    // eraser: click any element to remove it
+    if (tool === 'eraser') {
+      ev.stopPropagation();
+      if (el.locked) return;
+      select([el.id]);
+      setTimeout(() => deleteSelected(), 0);
+      return;
+    }
+    // pen draws over elements instead of grabbing them
+    if (tool === 'pen') return;
+
     ev.stopPropagation();
     if (el.locked) return;
     const additive = ev.shiftKey || ev.metaKey || ev.ctrlKey;
@@ -236,18 +297,51 @@ export default function BoardCanvas() {
   };
 
   const onViewportDown = (ev: React.PointerEvent) => {
-    // middle mouse or space+drag = pan
+    // middle mouse or space+drag = pan (works in every tool)
     if (ev.button === 1 || spaceDown) {
       ev.preventDefault();
       setDrag({ mode: 'pan', startVX: ev.clientX, startVY: ev.clientY, startPanX: panX, startPanY: panY });
       return;
     }
     if (ev.button !== 0) return;
+
+    // pen: start a freehand stroke
+    if (tool === 'pen') {
+      ev.preventDefault();
+      const p = toWorld(ev.clientX, ev.clientY);
+      inkRef.current = [p];
+      setInk([p]);
+      return;
+    }
     setEditingText(null);
     select([]);
     const p = toWorld(ev.clientX, ev.clientY);
     setDrag({ mode: 'marquee', startX: p.x, startY: p.y });
   };
+
+  // freehand capture
+  useEffect(() => {
+    if (!ink) return;
+    const move = (ev: PointerEvent) => {
+      const p = toWorld(ev.clientX, ev.clientY);
+      const last = inkRef.current[inkRef.current.length - 1];
+      // skip micro-moves so paths stay light
+      if (last && Math.hypot(p.x - last.x, p.y - last.y) < 1.5 / zoom) return;
+      inkRef.current = [...inkRef.current, p];
+      setInk(inkRef.current);
+    };
+    const up = () => {
+      if (inkRef.current.length > 1) addStroke(inkRef.current);
+      inkRef.current = [];
+      setInk(null);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+  }, [ink, zoom, panX, panY, addStroke]);
 
   useEffect(() => {
     if (!drag) return;
@@ -341,7 +435,8 @@ export default function BoardCanvas() {
   return (
     <div
       ref={vpRef}
-      className={`canvas-viewport${spaceDown || panning ? ' panning' : ''}`}
+      className={`canvas-viewport${spaceDown || panning ? ' panning' : ''}${
+        tool === 'pen' ? ' pen' : tool === 'eraser' ? ' eraser' : ''}`}
       onPointerDown={onViewportDown}
       style={{
         backgroundColor: board?.bg ?? '#0d0f14',
@@ -371,6 +466,7 @@ export default function BoardCanvas() {
             >
               {e.kind === 'vision' && <VisionEl e={e} />}
               {e.kind === 'shape' && <ShapeEl e={e} />}
+              {e.kind === 'draw' && <DrawEl e={e} />}
               {e.kind === 'text' && (
                 <TextEl
                   e={e}
@@ -416,6 +512,17 @@ export default function BoardCanvas() {
           ) : (
             <div key={i} className="guide guide-h" style={{ top: g.pos, height: 1 / zoom }} />
           ),
+        )}
+
+        {/* live ink preview */}
+        {ink && ink.length > 1 && (
+          <svg className="ink-live" style={{ overflow: 'visible' }}>
+            <path
+              d={`M ${ink.map((p) => `${p.x} ${p.y}`).join(' L ')}`}
+              fill="none" stroke={penColor} strokeWidth={penWidth}
+              strokeLinecap="round" strokeLinejoin="round"
+            />
+          </svg>
         )}
 
         {/* marquee */}

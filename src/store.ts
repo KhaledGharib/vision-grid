@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
-import type { AppState, Board, BoardElement, MonthGoal, ShapeKind, Task, WeekGoal } from './types';
+import type { AppState, Board, BoardElement, MonthGoal, ShapeKind, Task, Tool, WeekGoal } from './types';
 import { MAX_MITS, MAX_MONTH_GOALS, MAX_WEEK_GOALS, MAX_ZOOM, MIN_ZOOM, SPAWN_H, SPAWN_W, STARVE_AFTER_DAYS } from './types';
 import { dayKey, monthKey, weekKey } from './dates';
 import { loadState, saveState, putImage, deleteImage } from './storage';
@@ -52,6 +52,15 @@ interface Store extends AppState {
   zoom: number;
   panX: number;
   panY: number;
+
+  // ---- drawing ----
+  tool: Tool;
+  penColor: string;
+  penWidth: number;
+  setTool: (t: Tool) => void;
+  setPen: (patch: { color?: string; width?: number }) => void;
+  /** Commit a freehand stroke. Points are in world coordinates. */
+  addStroke: (pts: { x: number; y: number }[]) => void;
   past: Snapshot[];
   future: Snapshot[];
 
@@ -175,6 +184,9 @@ export const useStore = create<Store>((set, get) => {
     zoom: 1,
     panX: 0,
     panY: 0,
+    tool: 'select',
+    penColor: '#f0b429',
+    penWidth: 4,
     past: [],
     future: [],
 
@@ -212,6 +224,40 @@ export const useStore = create<Store>((set, get) => {
       set({ selection: sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id] });
     },
     clearSelection: () => set({ selection: [] }),
+    setTool: (t) => set({ tool: t, selection: t === 'select' ? get().selection : [] }),
+    setPen: (p) => set((s) => ({
+      penColor: p.color ?? s.penColor,
+      penWidth: p.width ?? s.penWidth,
+    })),
+
+    addStroke: (pts) => {
+      if (pts.length < 2 || !get().activeBoard()) return;
+      const s = get();
+      const xs = pts.map((p) => p.x);
+      const ys = pts.map((p) => p.y);
+      const pad = s.penWidth;
+      const minX = Math.min(...xs) - pad;
+      const minY = Math.min(...ys) - pad;
+      const w = Math.max(1, Math.max(...xs) - Math.min(...xs) + pad * 2);
+      const h = Math.max(1, Math.max(...ys) - Math.min(...ys) + pad * 2);
+      // store normalised so the stroke scales cleanly when the box is resized
+      const norm = pts.map((p) => ({
+        x: (p.x - minX) / w,
+        y: (p.y - minY) / h,
+      }));
+      push();
+      const el: BoardElement = {
+        ...baseEl('draw'),
+        x: minX, y: minY, w, h,
+        points: norm,
+        stroke: s.penColor,
+        strokeWidth: s.penWidth,
+        smooth: true,
+      };
+      set((st) => ({ elements: [...st.elements, el] }));
+      persist();
+    },
+
     setZoom: (z) => set({ zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z)) }),
     setPan: (x, y) => set({ panX: x, panY: y }),
     panBy: (dx, dy) => set((s) => ({ panX: s.panX + dx, panY: s.panY + dy })),
