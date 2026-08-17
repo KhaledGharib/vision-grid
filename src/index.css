@@ -391,3 +391,18 @@ html[dir='rtl'] .canvas-viewport,
 html[dir='rtl'] .board-body,
 html[dir='rtl'] .minimap { direction: ltr; }
 html[dir='rtl'] .inspector { text-align: right; }
+
+/* prominent add-vision action */
+.add-vision { font-weight: 700; }
+
+/* empty board coaching */
+.board-empty {
+  position: absolute; inset: 0; display: grid; place-content: center;
+  justify-items: center; text-align: center; gap: 4px;
+  pointer-events: none; padding: 24px;
+}
+.board-empty > * { pointer-events: auto; }
+.be-icon { font-size: 44px; opacity: .5; margin-bottom: 6px; }
+.board-empty h3 { margin: 0; font-size: 19px; }
+.board-empty p { margin: 0 0 16px; max-width: 380px; color: var(--muted);
+  font-size: 13.5px; line-height: 1.6; }

@@ -35,6 +35,18 @@ export const STRINGS = {
 
   // ---------- board toolbar ----------
   image: { en: 'Image', ar: 'صورة' },
+  addVision: { en: 'Add vision', ar: 'إضافة رؤية' },
+  addVisionTitle: {
+    en: 'Add a vision — pick an image of something you want',
+    ar: 'أضف رؤية — اختر صورة لشيء تريده',
+  },
+  emptyBoardTitle: { en: 'Your board is empty', ar: 'لوحتك فارغة' },
+  emptyBoardBody: {
+    en: 'A vision is a picture of something you actually want. Everything else in the app hangs off it.',
+    ar: 'الرؤية هي صورة لشيء تريده فعلاً. كل شيء آخر في التطبيق يتفرع منها.',
+  },
+  emptyBoardCta: { en: 'Add your first vision', ar: 'أضف رؤيتك الأولى' },
+  newBoardCreated: { en: 'New board', ar: 'لوحة جديدة' },
   heading: { en: 'Heading', ar: 'عنوان' },
   body: { en: 'Body', ar: 'نص' },
   quote: { en: 'Quote', ar: 'اقتباس' },

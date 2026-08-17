@@ -73,10 +73,13 @@ export default function App() {
             title={t('newBoard')}
             onClick={() => {
               const n = prompt(t('newBoardPrompt'));
-              if (n?.trim()) addBoard(n.trim());
+              if (n?.trim()) {
+                addBoard(n.trim());
+                setTab('board'); // land on the new (now active) board
+              }
             }}
           >
-            +
+            + {t('boardPanel')}
           </button>
         </div>
 

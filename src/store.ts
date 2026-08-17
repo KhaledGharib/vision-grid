@@ -82,7 +82,7 @@ interface Store extends AppState {
   zoomAt: (factor: number, vx: number, vy: number) => void;
 
   // boards
-  addBoard: (name: string) => void;
+  addBoard: (name: string) => string;
   setActiveBoard: (id: string) => void;
   deleteBoard: (id: string) => void;
   setBoardBg: (color: string) => void;
@@ -252,11 +252,20 @@ export const useStore = create<Store>((set, get) => {
     // ---------- boards ----------
     addBoard: (name) => {
       push();
+      const id = nanoid();
       set((s) => ({
-        boards: [...s.boards, { id: nanoid(), userId: s.user.id, name,
-          visibility: 'private', isActive: false, bg: '#0d0f14', createdAt: now() }],
+        // switch to the new board immediately — creating something and seeing
+        // no change reads as "the button is broken"
+        boards: [
+          ...s.boards.map((b) => ({ ...b, isActive: false })),
+          { id, userId: s.user.id, name, visibility: 'private',
+            isActive: true, bg: '#0d0f14', createdAt: now() },
+        ],
+        selection: [],
+        panX: 0, panY: 0, zoom: 1,
       }));
       persist();
+      return id;
     },
     setActiveBoard: (id) => {
       set((s) => ({ boards: s.boards.map((b) => ({ ...b, isActive: b.id === id })), selection: [] }));

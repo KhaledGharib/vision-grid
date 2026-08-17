@@ -133,7 +133,13 @@ export default function BoardView() {
         )}
 
         <span className="tb-sep" />
-        <button className="primary" onClick={() => fileRef.current?.click()}>🖼 {t('image')}</button>
+        <button
+          className="primary add-vision"
+          title={t('addVisionTitle')}
+          onClick={() => fileRef.current?.click()}
+        >
+          🖼 {t('addVision')}
+        </button>
         <span className="tb-sep" />
         <button onClick={() => addText('heading')}>T {t('heading')}</button>
         <button onClick={() => addText('body')}>T {t('body')}</button>
@@ -172,6 +178,16 @@ export default function BoardView() {
       <div className="board-body">
         <div className="canvas-stack">
           <BoardCanvas />
+          {els.length === 0 && (
+            <div className="board-empty">
+              <div className="be-icon">🖼</div>
+              <h3>{t('emptyBoardTitle')}</h3>
+              <p>{t('emptyBoardBody')}</p>
+              <button className="primary" onClick={() => fileRef.current?.click()}>
+                {t('emptyBoardCta')}
+              </button>
+            </div>
+          )}
           <Minimap />
         </div>
         <Inspector />
