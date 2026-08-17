@@ -18,7 +18,7 @@ function Ring({ pct, size = 40 }: { pct: number; size?: number }) {
   const r = (size - 5) / 2;
   const c = 2 * Math.PI * r;
   return (
-    <svg className="ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg className="vg-ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,.2)" strokeWidth="3.5" />
       <circle
         cx={size / 2} cy={size / 2} r={r} fill="none"
