@@ -159,16 +159,54 @@ src/
   store.ts        zustand store; chain rules, caps, undo/redo enforced here
   canvas.ts       snapping, bounds, resize math
   export.ts       board -> PNG renderer
+  i18n.ts         every UI string, English + Arabic
+  useT.ts         translation hook
   hooks/useImage  IndexedDB id -> object URL
   views/          BoardView · BoardCanvas · Inspector · Minimap
                   MonthView · WeekView · TodayView
+                  Guide · Coach · Ask
 ```
+
+## Status
+
+Feature-complete for a single user. The board, the enforced chain, the caps,
+the progress signals, the onboarding and the bilingual UI are all shipped and
+verified by driving the real UI.
+
+**Shipped**
+
+- Infinite-canvas board; images become visions
+- Enforced chain with hard caps — 3 month goals, 2 week goals, 3 daily MITs
+- Progress rings and starving visions, both driven purely by completed tasks
+- First-run guide + coach panels with worked good/bad examples
+- Full English/Arabic UI with RTL layout
+- Drag-to-draw shapes, PNG export, minimap, undo/redo
+
+**Deliberately rejected**
+
+A release built around a focus timer, hours-invested rings and a forced weekly
+review was implemented and then reverted — it added ceremony without adding
+clarity. It survives in the `v0.2` tag if any piece is ever wanted back. The
+lesson stuck: progress signals must come from actions already being taken, not
+from new rituals the user has to maintain.
 
 ## Roadmap
 
-- **v0.2** — focus timer, progress rings, starving visions (fade to gray after 30 days), Sunday review with carry/shrink/drop
-- **v0.3** — social: pair with a friend, Circle tab, task-specific nudges (3/day budget), cheers
-- **v0.4** — tray widget, fullscreen focus mode, wallpaper export, Graveyard view
+Nothing is being added until the app has been used with real content for a
+week. Building more on an unused system is how these die.
+
+**Next, once that's done**
+
+- **Social** — pair with a friend, see each other's boards, task-specific
+  nudges with a small daily budget. This was the original reason for the app
+  and is the only remaining feature that changes what it *is*.
+
+**Later / unscheduled**
+
+- Desktop packaging via Tauri (see below)
+- Board templates (a first attempt was written against the old fixed-artboard
+  model and deleted; it would need rebuilding in world coordinates)
+- Tray widget, wallpaper export
 
 ## Desktop packaging (later)
 
