@@ -1,6 +1,9 @@
 import { useStore } from '../store';
 import { useT } from '../useT';
 import { POSTPONE_LIMIT } from '../types';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Hourglass, X } from 'lucide-react';
 
 /**
  * The only thing the carry-over ever asks you.
@@ -19,31 +22,40 @@ export default function StalledPrompt() {
   if (stalled.length === 0) return null;
 
   return (
-    <div className="stalled">
-      <div className="stalled-head">
-        <span className="st-ico">⏳</span>
+    <div className="mb-4 rounded-[12px] border border-[#f0b429]/35 bg-gradient-to-r from-[#f0b429]/[.11] to-[#f0b429]/[.03] px-[15px] py-[13px]">
+      <div className="mb-2.5 flex items-start gap-3">
+        <Hourglass className="mt-0.5 h-[19px] w-[19px] shrink-0 text-[#f0b429]" />
         <div>
-          <b>{t('stalledTitle')}</b>
-          <p className="muted small" style={{ margin: '2px 0 0' }}>
+          <b className="text-[14px]">{t('stalledTitle')}</b>
+          <p className="mt-0.5 text-[12px] text-[#8b93a4]">
             {t('stalledBody', { n: String(POSTPONE_LIMIT) })}
           </p>
         </div>
       </div>
 
       {stalled.map((task) => (
-        <div className="stalled-row" key={task.id}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="st-title">{task.title}</div>
-            <div className="thread">
-              {t('postponedTimes', { n: String(task.postponed ?? 0) })}
-              {task.originalDate && ` · ${t('plannedFor')} ${task.originalDate.slice(5)}`}
+        <div
+          key={task.id}
+          className="flex flex-wrap items-center gap-2 border-t border-white/[.06] py-2.5"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="text-[14px]">{task.title}</div>
+            <div className="mt-0.5 flex items-center gap-2 text-[12px] text-[#8b93a4]">
+              <Badge variant="accent">
+                {t('postponedTimes', { n: String(task.postponed ?? 0) })}
+              </Badge>
+              {task.originalDate && (
+                <span>{t('plannedFor')} {task.originalDate.slice(5)}</span>
+              )}
             </div>
           </div>
-          <button className="primary" onClick={() => recommit(task.id)}>
+          <Button variant="primary" size="sm" onClick={() => recommit(task.id)}>
             {t('doItToday')}
-          </button>
-          <button onClick={() => drop(task.id)}>{t('notNow')}</button>
-          <button className="ghost" title={t('deleteQ')} onClick={() => del(task.id)}>✕</button>
+          </Button>
+          <Button size="sm" onClick={() => drop(task.id)}>{t('notNow')}</Button>
+          <Button variant="ghost" size="icon" title={t('deleteQ')} onClick={() => del(task.id)}>
+            <X className="h-4 w-4" />
+          </Button>
         </div>
       ))}
     </div>

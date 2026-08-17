@@ -5,6 +5,10 @@ import { STARVE_AFTER_DAYS, type AppState, type BoardElement, type Task } from '
 import Ask, { type AskState } from './Ask';
 import ReadOnlyCanvas, { type ReadOnlyStats } from './ReadOnlyCanvas';
 import Avatar from './Avatar';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { Check, ChevronLeft, Star } from 'lucide-react';
 
 /** The full chain behind one task, so a nudge can name what it's really about. */
 interface Chain {
@@ -109,36 +113,56 @@ export default function FriendBoard({
     if (!state) return null;
     const c = buildChain(state, task);
     return (
-      <div className={`card mit-card${task.done ? ' done' : ''}`}>
-        <div className={`chk${task.done ? ' on' : ''}`} aria-hidden>{task.done ? '✓' : ''}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+      <Card className={cn('mb-2.5 flex items-center gap-3 p-3', task.done && 'opacity-70')}>
+        <div
+          className={cn(
+            'grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border',
+            task.done
+              ? 'border-[#34d399] bg-[#34d399] text-[#0d0f14]'
+              : 'border-[#39424f]',
+          )}
+          aria-hidden
+        >
+          {task.done && <Check className="h-3 w-3" strokeWidth={3} />}
+        </div>
+        <div className="min-w-0 flex-1">
           {showChain && c.vision && (
-            <div className="chain-crumb">
-              {urls[c.vision.id] && <img src={urls[c.vision.id]} alt="" className="crumb-img" />}
-              <span className="crumb-v">{c.vision.title}</span>
-              <span className="crumb-sep">→</span>
+            <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#8b93a4]">
+              {urls[c.vision.id] && (
+                <img
+                  src={urls[c.vision.id]}
+                  alt=""
+                  className="h-[18px] w-[18px] rounded border border-[#262c38] object-cover"
+                />
+              )}
+              <span className="text-[#e6e9ef]">{c.vision.title}</span>
+              <span className="opacity-50">→</span>
               <span>{c.monthGoal}</span>
-              <span className="crumb-sep">→</span>
+              <span className="opacity-50">→</span>
               <span>{c.weekGoal}</span>
             </div>
           )}
-          <div style={{
-            textDecoration: task.done ? 'line-through' : 'none',
-            color: task.done ? 'var(--muted)' : undefined,
-          }}>
-            {task.isMit && '⭐ '}{task.title}
+          <div
+            className={cn(
+              'flex items-center gap-1.5 text-[14px]',
+              task.done && 'text-[#8b93a4] line-through',
+            )}
+          >
+            {task.isMit && <Star className="h-3 w-3 shrink-0 fill-[#f0b429] text-[#f0b429]" />}
+            {task.title}
           </div>
         </div>
         {!task.done && (
-          <button
+          <Button
+            size="sm"
             disabled={left <= 0 || sent.includes(task.id)}
             title={left <= 0 ? t('budgetGone') : t('nudgeAbout')}
             onClick={() => nudge(task)}
           >
             {sent.includes(task.id) ? '✓ ' + t('nudged') : '👋 ' + t('nudge')}
-          </button>
+          </Button>
         )}
-      </div>
+      </Card>
     );
   };
 
@@ -153,14 +177,22 @@ export default function FriendBoard({
       <div className="view">
         <Ask state={ask} onClose={() => setAsk(null)} />
         <div className="view-head">
-          <div className="row" style={{ marginBottom: 6 }}>
-            <button className="ghost" onClick={() => setFocus(null)}>‹ {t('tabBoard')}</button>
+          <div className="mb-1.5">
+            <Button variant="ghost" size="sm" onClick={() => setFocus(null)}>
+              <ChevronLeft className="h-3.5 w-3.5" /> {t('tabBoard')}
+            </Button>
           </div>
-          <div className="focus-head">
-            {urls[focus] && <img src={urls[focus]} alt="" className="focus-img" />}
+          <div className="flex items-center gap-3.5">
+            {urls[focus] && (
+              <img
+                src={urls[focus]}
+                alt=""
+                className="h-[62px] w-[62px] rounded-xl border border-[#262c38] object-cover"
+              />
+            )}
             <div>
-              <h2 style={{ margin: 0 }}>{vision?.title}</h2>
-              <p style={{ margin: '4px 0 0' }}>
+              <h2 className="m-0">{vision?.title}</h2>
+              <p className="mt-1">
                 {p && p.total > 0
                   ? `${p.done}/${p.total} ${t('doneToday')} · ${Math.round((p.done / p.total) * 100)}%`
                   : t('noGoalsForVision')}
@@ -170,22 +202,22 @@ export default function FriendBoard({
           </div>
         </div>
 
-        {err && <div className="card ask-err">{err}</div>}
+        {err && <Card className="mb-3 text-[12.5px] text-[#f87171]">{err}</Card>}
 
         {months.length === 0 ? (
           <div className="empty">{t('noGoalsForVision')}</div>
         ) : months.map((m) => {
           const weeks = state.weekGoals.filter((w) => w.monthGoalId === m.id);
           return (
-            <div key={m.id} className="chain-block">
-              <h3 className="sec">📅 {m.title}</h3>
+            <div key={m.id} className="mb-5">
+              <h3 className="mb-2 text-[14px] font-semibold text-[#e6e9ef]">📅 {m.title}</h3>
               {weeks.length === 0 ? (
                 <div className="empty small">{t('noWeekGoals')}</div>
               ) : weeks.map((w) => {
                 const tasks = state.tasks.filter((x) => x.weekGoalId === w.id);
                 return (
-                  <div key={w.id} className="week-block">
-                    <div className="week-label">🗓 {w.title}</div>
+                  <div key={w.id} className="mb-3 ms-3.5">
+                    <div className="mb-1.5 text-[13px] text-[#8b93a4]">🗓 {w.title}</div>
                     {tasks.length === 0
                       ? <div className="empty small">{t('noTasksYet')}</div>
                       : tasks.map((task) => (
@@ -209,30 +241,40 @@ export default function FriendBoard({
       <Ask state={ask} onClose={() => setAsk(null)} />
 
       <div className="view-head">
-        <div className="row" style={{ marginBottom: 6 }}>
-          <button className="ghost" onClick={onBack}>‹ {t('circle')}</button>
-          <div className="spacer" />
-          <div className="tabs">
-            <button className={`tab${tab === 'board' ? ' active' : ''}`} onClick={() => setTab('board')}>
-              {t('tabBoard')}
-            </button>
-            <button className={`tab${tab === 'today' ? ' active' : ''}`} onClick={() => setTab('today')}>
-              {t('tabToday')}
-            </button>
+        <div className="mb-1.5 flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            <ChevronLeft className="h-3.5 w-3.5" /> {t('circle')}
+          </Button>
+          <div className="flex-1" />
+          <div className="flex gap-1 rounded-[10px] border border-[#262c38] bg-[#0d0f14] p-1">
+            {(['board', 'today'] as const).map((id) => (
+              <button
+                key={id}
+                className={cn(
+                  'btn-reset rounded-md px-3 py-1 text-[13px] transition-colors',
+                  tab === id
+                    ? 'bg-[#1b2029] text-[#e6e9ef]'
+                    : 'text-[#8b93a4] hover:text-[#e6e9ef]',
+                )}
+                onClick={() => setTab(id)}
+              >
+                {id === 'board' ? t('tabBoard') : t('tabToday')}
+              </button>
+            ))}
           </div>
         </div>
-        <div className="row" style={{ alignItems: 'center', gap: 10 }}>
+        <div className="flex items-center gap-2.5">
           <Avatar emoji={friend.avatar_emoji} color={friend.avatar_color}
                   name={friend.display_name} size={40} />
-          <h2 style={{ margin: 0 }}>{friend.display_name ?? t('unnamedFriend')}</h2>
+          <h2 className="m-0">{friend.display_name ?? t('unnamedFriend')}</h2>
         </div>
         <p>
           {tab === 'board' ? t('tapVisionHint') : t('readOnlyBoard')}
-          {' · '}<b style={{ color: 'var(--accent)' }}>{left}</b> {t('nudgesLeft')}
+          {' · '}<b className="text-[#f0b429]">{left}</b> {t('nudgesLeft')}
         </p>
       </div>
 
-      {err && <div className="card ask-err">{err}</div>}
+      {err && <Card className="mb-3 text-[12.5px] text-[#f87171]">{err}</Card>}
 
       {!state ? (
         <div className="empty">{t('loading')}</div>
