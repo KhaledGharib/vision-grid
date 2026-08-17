@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from './store';
 import { useT } from './useT';
-import { LANGS } from './i18n';
+import { LANGS, type Lang } from './i18n';
 import { exportState } from './storage';
 import BoardView from './views/BoardView';
 import MonthView from './views/MonthView';
@@ -80,17 +80,18 @@ export default function App() {
           </button>
         </div>
 
-        <div className="lang-switch" title={t('language')}>
+        <select
+          className="lang-select"
+          title={t('language')}
+          value={lang}
+          onChange={(e) => setLang(e.target.value as Lang)}
+        >
           {LANGS.map((l) => (
-            <button
-              key={l.id}
-              className={`lang-btn${lang === l.id ? ' on' : ''}`}
-              onClick={() => setLang(l.id)}
-            >
-              {l.native}
-            </button>
+            <option key={l.id} value={l.id}>
+              {l.flag} {l.native}
+            </option>
           ))}
-        </div>
+        </select>
 
         <button
           className="ghost help-btn"

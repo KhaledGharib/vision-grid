@@ -347,12 +347,15 @@ input[type=range] { padding: 0; }
 .el-text[contenteditable='true'] { user-select: text; -webkit-user-select: text; }
 
 /* ================= language switch + RTL ================= */
-.lang-switch { display: flex; gap: 2px; background: var(--panel-2);
-  border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
-.lang-btn { padding: 4px 10px; font-size: 12px; border: none; background: transparent;
-  color: var(--muted); border-radius: 6px; }
-.lang-btn:hover { color: var(--text); background: rgba(255,255,255,.05); }
-.lang-btn.on { background: var(--accent); color: #1a1400; font-weight: 700; }
+.lang-select {
+  width: auto; min-width: 118px; padding: 6px 10px; font-size: 13px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  color: var(--text); border-radius: 8px; cursor: pointer;
+}
+.lang-select:hover { border-color: var(--accent-dim); }
+.lang-select:focus { outline: none; border-color: var(--accent); }
+/* native option lists render on the OS layer — force readable colours */
+.lang-select option { background: var(--panel); color: var(--text); }
 
 /* Arabic UI: readable Arabic type everywhere in the chrome */
 html[lang='ar'] body,

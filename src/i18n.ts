@@ -4,9 +4,9 @@
 
 export type Lang = 'en' | 'ar';
 
-export const LANGS: { id: Lang; label: string; native: string }[] = [
-  { id: 'en', label: 'English', native: 'English' },
-  { id: 'ar', label: 'Arabic', native: 'العربية' },
+export const LANGS: { id: Lang; label: string; native: string; flag: string }[] = [
+  { id: 'en', label: 'English', native: 'English', flag: '🇬🇧' },
+  { id: 'ar', label: 'Arabic', native: 'العربية', flag: '🇸🇦' },
 ];
 
 export const STRINGS = {
