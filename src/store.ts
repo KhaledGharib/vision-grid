@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
-import type { AppState, Board, BoardElement, FocusSession, MonthGoal, Review, ShapeKind, Task, WeekGoal } from './types';
-import { MAX_MITS, MAX_MONTH_GOALS, MAX_WEEK_GOALS, MAX_ZOOM, MIN_ZOOM, SPAWN_H, SPAWN_W, STARVE_AFTER_DAYS } from './types';
+import type { AppState, Board, BoardElement, MonthGoal, ShapeKind, Task, WeekGoal } from './types';
+import { MAX_MITS, MAX_MONTH_GOALS, MAX_WEEK_GOALS, MAX_ZOOM, MIN_ZOOM, SPAWN_H, SPAWN_W } from './types';
 import { dayKey, monthKey, weekKey } from './dates';
 import { loadState, saveState, putImage, deleteImage } from './storage';
 
@@ -20,23 +20,13 @@ function seed(): AppState {
     monthGoals: [],
     weekGoals: [],
     tasks: [],
-    sessions: [],
-    reviews: [],
   };
 }
 
 /** v1 (visions[]) -> v2 (elements[]) */
 function migrate(raw: any): AppState {
   if (!raw) return seed();
-  if (raw.version >= 2 && raw.elements) {
-    // v2 -> v3: focus sessions + reviews
-    return {
-      ...raw,
-      version: 3,
-      sessions: raw.sessions ?? [],
-      reviews: raw.reviews ?? [],
-    } as AppState;
-  }
+  if (raw.version >= 2 && raw.elements) return raw as AppState;
   const elements: BoardElement[] = (raw.visions ?? []).map((v: any) => ({
     id: v.id, boardId: v.boardId, kind: 'vision' as const,
     x: v.x ?? 40, y: v.y ?? 40, w: v.w ?? 220, h: v.h ?? 220,
@@ -52,8 +42,6 @@ function migrate(raw: any): AppState {
     monthGoals: raw.monthGoals ?? [],
     weekGoals: raw.weekGoals ?? [],
     tasks: raw.tasks ?? [],
-    sessions: [],
-    reviews: [],
   };
 }
 
@@ -119,29 +107,6 @@ interface Store extends AppState {
   currentMonthGoals: () => MonthGoal[];
   currentWeekGoals: () => WeekGoal[];
   todayTasks: () => Task[];
-
-  // ---- v0.2: focus timer ----
-  timerTaskId: string | null;
-  timerStartedAt: number | null;
-  startTimer: (taskId: string) => void;
-  stopTimer: () => void;
-  logMinutes: (taskId: string, minutes: number) => void;
-
-  // ---- v0.2: attention / review ----
-  /** Total focused minutes ever spent feeding this vision. */
-  visionMinutes: (visionId: string) => number;
-  /** Days since the last focus session on this vision; null if never fed. */
-  visionIdleDays: (visionId: string) => number | null;
-  /** 0..1 — how starved this vision is. 1 = fully faded. */
-  visionStarvation: (visionId: string) => number;
-  /** Week goals from previous weeks still marked active. */
-  staleWeekGoals: () => WeekGoal[];
-  carryWeekGoal: (id: string) => void;
-  shrinkWeekGoal: (id: string, newTitle: string) => void;
-  dropWeekGoal: (id: string, reason: string) => void;
-  graveyard: () => WeekGoal[];
-  saveReview: (notes: string) => void;
-  reviewDoneThisWeek: () => boolean;
   visionForTask: (t: Task) => BoardElement | undefined;
   visionProgress: (visionId: string) => { done: number; total: number };
 }
@@ -157,9 +122,8 @@ export const useStore = create<Store>((set, get) => {
   const persist = () => {
     const s = get();
     saveState({
-      version: 3, user: s.user, boards: s.boards, elements: s.elements,
+      version: 2, user: s.user, boards: s.boards, elements: s.elements,
       monthGoals: s.monthGoals, weekGoals: s.weekGoals, tasks: s.tasks,
-      sessions: s.sessions, reviews: s.reviews,
     });
   };
 
@@ -551,152 +515,6 @@ export const useStore = create<Store>((set, get) => {
       const wgIds = s.weekGoals.filter((w) => mgIds.includes(w.monthGoalId)).map((w) => w.id);
       const tasks = s.tasks.filter((t) => wgIds.includes(t.weekGoalId));
       return { done: tasks.filter((t) => t.done).length, total: tasks.length };
-    },
-
-    // ================= v0.2 =================
-
-    timerTaskId: null,
-    timerStartedAt: null,
-
-    startTimer: (taskId) => {
-      const s = get();
-      // starting a new timer banks whatever the running one earned
-      if (s.timerTaskId && s.timerStartedAt) s.stopTimer();
-      set({ timerTaskId: taskId, timerStartedAt: Date.now() });
-    },
-
-    stopTimer: () => {
-      const s = get();
-      if (!s.timerTaskId || !s.timerStartedAt) return;
-      const ms = Date.now() - s.timerStartedAt;
-      const minutes = Math.round(ms / 60000);
-      const taskId = s.timerTaskId;
-      set({ timerTaskId: null, timerStartedAt: null });
-      // discard sessions under a minute — noise, not effort
-      if (minutes >= 1) {
-        const session: FocusSession = {
-          id: nanoid(),
-          taskId,
-          startedAt: new Date(s.timerStartedAt).toISOString(),
-          endedAt: new Date().toISOString(),
-          minutes,
-        };
-        set((st) => ({
-          sessions: [...st.sessions, session],
-          tasks: st.tasks.map((t) =>
-            t.id === taskId ? { ...t, minutesSpent: t.minutesSpent + minutes } : t),
-        }));
-        persist();
-      }
-    },
-
-    /** Manual entry, for work done away from the app. */
-    logMinutes: (taskId, minutes) => {
-      if (minutes <= 0) return;
-      const session: FocusSession = {
-        id: nanoid(),
-        taskId,
-        startedAt: new Date(Date.now() - minutes * 60000).toISOString(),
-        endedAt: new Date().toISOString(),
-        minutes,
-      };
-      set((st) => ({
-        sessions: [...st.sessions, session],
-        tasks: st.tasks.map((t) =>
-          t.id === taskId ? { ...t, minutesSpent: t.minutesSpent + minutes } : t),
-      }));
-      persist();
-    },
-
-    visionMinutes: (visionId) => {
-      const s = get();
-      const mgIds = s.monthGoals.filter((g) => g.visionId === visionId).map((g) => g.id);
-      const wgIds = s.weekGoals.filter((w) => mgIds.includes(w.monthGoalId)).map((w) => w.id);
-      const taskIds = s.tasks.filter((t) => wgIds.includes(t.weekGoalId)).map((t) => t.id);
-      return s.sessions
-        .filter((x) => taskIds.includes(x.taskId))
-        .reduce((sum, x) => sum + x.minutes, 0);
-    },
-
-    visionIdleDays: (visionId) => {
-      const s = get();
-      const mgIds = s.monthGoals.filter((g) => g.visionId === visionId).map((g) => g.id);
-      const wgIds = s.weekGoals.filter((w) => mgIds.includes(w.monthGoalId)).map((w) => w.id);
-      const taskIds = s.tasks.filter((t) => wgIds.includes(t.weekGoalId)).map((t) => t.id);
-      const mine = s.sessions.filter((x) => taskIds.includes(x.taskId));
-      if (!mine.length) return null;
-      const last = Math.max(...mine.map((x) => new Date(x.endedAt).getTime()));
-      return Math.floor((Date.now() - last) / 86400000);
-    },
-
-    visionStarvation: (visionId) => {
-      const s = get();
-      const idle = s.visionIdleDays(visionId);
-      const el = s.elements.find((e) => e.id === visionId);
-      // never fed: measure from when the vision was created, not epoch
-      const days = idle ?? (el
-        ? Math.floor((Date.now() - new Date(el.createdAt).getTime()) / 86400000)
-        : 0);
-      if (days <= 0) return 0;
-      return Math.max(0, Math.min(1, days / STARVE_AFTER_DAYS));
-    },
-
-    staleWeekGoals: () => {
-      const wk = weekKey();
-      return get().weekGoals.filter((w) => w.status === 'active' && w.weekKey < wk);
-    },
-
-    carryWeekGoal: (id) => {
-      push();
-      const wk = weekKey();
-      set((s) => ({
-        weekGoals: s.weekGoals.map((w) =>
-          w.id === id ? { ...w, weekKey: wk, carryCount: w.carryCount + 1 } : w),
-      }));
-      persist();
-    },
-
-    shrinkWeekGoal: (id, newTitle) => {
-      if (!newTitle.trim()) return;
-      push();
-      const wk = weekKey();
-      set((s) => ({
-        weekGoals: s.weekGoals.map((w) =>
-          w.id === id ? { ...w, title: newTitle.trim(), weekKey: wk, carryCount: 0 } : w),
-      }));
-      persist();
-    },
-
-    dropWeekGoal: (id, reason) => {
-      push();
-      set((s) => ({
-        weekGoals: s.weekGoals.map((w) =>
-          w.id === id ? { ...w, status: 'dropped' as const, droppedReason: reason.trim() } : w),
-      }));
-      persist();
-    },
-
-    graveyard: () => get().weekGoals.filter((w) => w.status === 'dropped'),
-
-    saveReview: (notes) => {
-      const wk = weekKey();
-      const existing = get().reviews.find((r) => r.periodKey === wk);
-      if (existing) {
-        set((s) => ({
-          reviews: s.reviews.map((r) => (r.periodKey === wk ? { ...r, notes } : r)),
-        }));
-      } else {
-        const r: Review = {
-          id: nanoid(), periodType: 'week', periodKey: wk, notes, createdAt: now(),
-        };
-        set((s) => ({ reviews: [...s.reviews, r] }));
-      }
-      persist();
-    },
-
-    reviewDoneThisWeek: () => {
-      const wk = weekKey();
-      return get().reviews.some((r) => r.periodKey === wk);
     },
   };
 });

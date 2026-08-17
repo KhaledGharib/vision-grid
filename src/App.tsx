@@ -5,9 +5,8 @@ import BoardView from './views/BoardView';
 import MonthView from './views/MonthView';
 import WeekView from './views/WeekView';
 import TodayView from './views/TodayView';
-import ReviewView from './views/ReviewView';
 
-type Tab = 'board' | 'month' | 'week' | 'today' | 'review';
+type Tab = 'board' | 'month' | 'week' | 'today';
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('today');
@@ -17,8 +16,6 @@ export default function App() {
   const state = useStore();
 
   const active = boards.find((b) => b.isActive);
-  const needsReview = !useStore((s) => s.reviewDoneThisWeek)()
-    || useStore((s) => s.staleWeekGoals)().length > 0;
 
   return (
     <div className="app">
@@ -26,14 +23,13 @@ export default function App() {
         <span className="logo">◈ Vision Grid</span>
 
         <div className="tabs">
-          {(['board', 'month', 'week', 'today', 'review'] as Tab[]).map((t) => (
+          {(['board', 'month', 'week', 'today'] as Tab[]).map((t) => (
             <button
               key={t}
               className={`tab${tab === t ? ' active' : ''}`}
               onClick={() => setTab(t)}
             >
               {t[0].toUpperCase() + t.slice(1)}
-              {t === 'review' && needsReview && <span className="dot" title="Review not done this week" />}
             </button>
           ))}
         </div>
@@ -79,8 +75,6 @@ export default function App() {
               monthGoals: state.monthGoals,
               weekGoals: state.weekGoals,
               tasks: state.tasks,
-              sessions: state.sessions,
-              reviews: state.reviews,
             })
           }
         >
@@ -92,7 +86,6 @@ export default function App() {
       {tab === 'month' && <MonthView />}
       {tab === 'week' && <WeekView />}
       {tab === 'today' && <TodayView />}
-      {tab === 'review' && <ReviewView />}
     </div>
   );
 }

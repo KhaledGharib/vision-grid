@@ -95,24 +95,6 @@ export interface Task {
   createdAt: string;
 }
 
-/** A block of focused time actually spent on a task. The only real input. */
-export interface FocusSession {
-  id: string;
-  taskId: string;
-  startedAt: string;
-  endedAt: string;
-  minutes: number;
-}
-
-/** A completed weekly review. */
-export interface Review {
-  id: string;
-  periodType: 'week';
-  periodKey: string;      // "2026-W33"
-  notes: string;
-  createdAt: string;
-}
-
 export interface AppState {
   version: number;
   user: User;
@@ -121,24 +103,12 @@ export interface AppState {
   monthGoals: MonthGoal[];
   weekGoals: WeekGoal[];
   tasks: Task[];
-  sessions: FocusSession[];
-  reviews: Review[];
 }
 
 // ---- Hard caps: the constraint IS the feature ----
 export const MAX_MONTH_GOALS = 3;
 export const MAX_WEEK_GOALS = 2;
 export const MAX_MITS = 3;
-
-// ---- v0.2: effort & attention ----
-/** Default focus block length, minutes. */
-export const FOCUS_MINUTES = 25;
-/** Days of zero attention before a vision starts fading. */
-export const STARVE_AFTER_DAYS = 30;
-/** A week goal can only be carried this many times before it must be shrunk or dropped. */
-export const MAX_CARRIES = 2;
-/** Hours of focused work that count as a "fully fed" vision for the progress ring. */
-export const RING_TARGET_HOURS = 20;
 
 // ---- Canvas (infinite) ----
 // No artboard bounds. These only seed where new elements first appear.
