@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useT } from '../useT';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 /**
  * In-app replacement for window.prompt / window.confirm.
@@ -7,6 +13,10 @@ import { useT } from '../useT';
  * Native dialogs are unreliable: browsers suppress repeat dialogs, some
  * embedded/automated contexts never show them at all, and while one is open
  * the whole page is frozen. That made buttons look broken.
+ *
+ * Now built on Radix Dialog, which brings focus trapping, restore-focus on
+ * close, aria wiring and scroll locking — all things the hand-rolled overlay
+ * silently lacked.
  */
 export type AskState =
   | { kind: 'prompt'; title: string; body?: string; placeholder?: string; initial?: string;
@@ -22,19 +32,10 @@ export default function Ask({ state, onClose }: { state: AskState; onClose: () =
   useEffect(() => {
     if (state?.kind === 'prompt') {
       setVal(state.value ?? '');
-      // focus after paint so the caret actually lands in the field
-      setTimeout(() => inputRef.current?.select(), 30);
+      // select after paint so the caret actually lands in the field
+      setTimeout(() => inputRef.current?.select(), 40);
     }
   }, [state]);
-
-  useEffect(() => {
-    if (!state) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); onClose(); }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [state, onClose]);
 
   if (!state) return null;
 
@@ -50,14 +51,18 @@ export default function Ask({ state, onClose }: { state: AskState; onClose: () =
   };
 
   return (
-    <div className="ask-overlay" onClick={onClose}>
-      <div className="ask" onClick={(e) => e.stopPropagation()}>
-        <h3>{state.title}</h3>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent onOpenAutoFocus={(e) => {
+        // let the input keep focus rather than the close button
+        if (state.kind === 'prompt') e.preventDefault();
+      }}>
+        <DialogHeader>
+          <DialogTitle>{state.title}</DialogTitle>
+          {state.body && <DialogDescription>{state.body}</DialogDescription>}
+        </DialogHeader>
 
-        {state.body && <p className="ask-body chain-body">{state.body}</p>}
-
-        {state.kind === 'prompt' ? (
-          <input
+        {state.kind === 'prompt' && (
+          <Input
             ref={inputRef}
             value={val}
             placeholder={state.placeholder}
@@ -66,19 +71,19 @@ export default function Ask({ state, onClose }: { state: AskState; onClose: () =
               if (e.key === 'Enter') { e.preventDefault(); submit(); }
             }}
           />
-        ) : null}
+        )}
 
-        <div className="ask-actions">
-          <button className="ghost" onClick={onClose}>{t('cancel')}</button>
-          <button
-            className={state.kind === 'confirm' && state.danger ? 'danger' : 'primary'}
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>{t('cancel')}</Button>
+          <Button
+            variant={state.kind === 'confirm' && state.danger ? 'destructive' : 'primary'}
             disabled={state.kind === 'prompt' && !val.trim()}
             onClick={submit}
           >
             {state.kind === 'prompt' ? (state.okLabel ?? t('create')) : t('confirmBtn')}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
