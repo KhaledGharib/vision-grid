@@ -213,7 +213,7 @@ export default function CircleView({ signedIn }: { signedIn: boolean }) {
                   )}
                 >
                   <button
-                    className="absolute end-2 top-2 z-[2] grid h-6 w-6 place-items-center rounded-full text-[#8b93a4] opacity-0 transition hover:bg-[#f87171]/[.12] hover:text-[#f87171] group-hover:opacity-100"
+                    className="btn-reset absolute end-2 top-2 z-[2] grid h-6 w-6 place-items-center rounded-full text-[#8b93a4] opacity-0 transition hover:bg-[#f87171]/[.12] hover:text-[#f87171] group-hover:opacity-100"
                     title={t('unfriend')}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -270,7 +270,7 @@ export default function CircleView({ signedIn }: { signedIn: boolean }) {
 
             {/* invite slot sits inside the grid, quiet and secondary */}
             <button
-              className="flex min-h-[196px] flex-col items-center justify-center gap-1 rounded-[14px] border border-dashed border-[#262c38] bg-transparent p-4 text-center text-[#8b93a4] transition-colors hover:border-[#7a5c14] hover:text-[#f0b429]"
+              className="btn-reset flex min-h-[196px] flex-col items-center justify-center gap-1 rounded-[14px] border border-dashed border-[#262c38] bg-transparent p-4 text-center text-[#8b93a4] transition-colors hover:border-[#7a5c14] hover:text-[#f0b429]"
               onClick={() => setShowInvite(true)}
             >
               <Plus className="mb-1 h-7 w-7" />

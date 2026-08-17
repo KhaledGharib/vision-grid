@@ -251,7 +251,7 @@ export default function FriendBoard({
               <button
                 key={id}
                 className={cn(
-                  'rounded-md px-3 py-1 text-[13px] transition-colors',
+                  'btn-reset rounded-md px-3 py-1 text-[13px] transition-colors',
                   tab === id
                     ? 'bg-[#1b2029] text-[#e6e9ef]'
                     : 'text-[#8b93a4] hover:text-[#e6e9ef]',

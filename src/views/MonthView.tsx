@@ -153,7 +153,7 @@ export default function MonthView() {
           ) : (
             <button
               className={cn(
-                'mb-3.5 w-full rounded-[12px] border border-dashed border-[#262c38] p-3.5',
+                'btn-reset mb-3.5 w-full rounded-[12px] border border-dashed border-[#262c38] p-3.5',
                 'text-[13.5px] text-[#8b93a4] transition-colors',
                 'hover:border-[#7a5c14] hover:bg-[#f0b429]/[.04] hover:text-[#f0b429]',
               )}

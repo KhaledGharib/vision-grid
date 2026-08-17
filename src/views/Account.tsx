@@ -156,7 +156,7 @@ export default function Account({
                 <button
                   type="button"
                   className={cn(
-                    'grid aspect-square place-items-center rounded-md border text-[21px] transition-colors',
+                    'btn-reset grid aspect-square place-items-center rounded-md border text-[21px] transition-colors',
                     !emoji
                       ? 'border-[#f0b429] bg-[#f0b429]/15'
                       : 'border-transparent hover:bg-[#1b2029]',
@@ -171,7 +171,7 @@ export default function Account({
                     key={e}
                     type="button"
                     className={cn(
-                      'grid aspect-square place-items-center rounded-md border text-[21px] transition-colors',
+                      'btn-reset grid aspect-square place-items-center rounded-md border text-[21px] transition-colors',
                       emoji === e
                         ? 'border-[#f0b429] bg-[#f0b429]/15'
                         : 'border-transparent hover:bg-[#1b2029]',
@@ -192,7 +192,7 @@ export default function Account({
                     key={c}
                     type="button"
                     className={cn(
-                      'h-[30px] w-[30px] shrink-0 rounded-full border-2 transition-transform',
+                      'btn-reset h-[30px] w-[30px] shrink-0 rounded-full border-2 transition-transform',
                       color === c
                         ? 'border-white shadow-[0_0_0_2px_#f0b429] scale-110'
                         : 'border-transparent hover:scale-105',

@@ -28,7 +28,7 @@ export function Coach({
     <>
       <button
         type="button"
-        className="ms-2 inline-grid h-5 w-5 place-items-center rounded-full border border-[#262c38] bg-[#1b2029] align-middle text-[#8b93a4] transition-colors hover:border-[#7a5c14] hover:text-[#f0b429] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7a5c14]"
+        className="btn-reset ms-2 inline-grid h-5 w-5 place-items-center rounded-full border border-[#262c38] bg-[#1b2029] align-middle text-[#8b93a4] transition-colors hover:border-[#7a5c14] hover:text-[#f0b429] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7a5c14]"
         onClick={() => setOpen(true)}
         title={title}
         aria-label={title}
