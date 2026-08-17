@@ -108,8 +108,15 @@ export interface Task {
   minutesSpent: number;
   /** When this task was last ticked off. Drives progress + starvation — no timer needed. */
   completedAt?: string | null;
+  /** How many days this task has been rolled forward without being finished. */
+  postponed?: number;
+  /** The day it was originally planned for — kept so history stays honest. */
+  originalDate?: string;
   createdAt: string;
 }
+
+/** After this many roll-forwards the app stops moving it silently and asks. */
+export const POSTPONE_LIMIT = 3;
 
 export interface AppState {
   version: number;

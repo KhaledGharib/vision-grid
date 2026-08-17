@@ -1,36 +1,58 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
- * Collapsible inline coaching. Explains how to phrase a goal at this level,
- * with good/bad examples. Remembers its open/closed state per key.
+ * Help that stays out of the way.
+ *
+ * The old version was an inline card, open by default, ~480px tall — it filled
+ * the whole screen and pushed the user's actual goals below the fold. You had
+ * to scroll past a lecture to see your own work.
+ *
+ * Now it's a small "?" next to the heading that opens a panel on demand, and
+ * once you've read it the app stops offering it.
  */
 export function Coach({
-  id,
   title,
   children,
 }: {
-  id: string;
+  /** kept for call-site clarity; no longer used for persistence */
+  id?: string;
   title: string;
   children: React.ReactNode;
 }) {
-  const key = `vg:coach:${id}`;
-  const [open, setOpen] = useState(() => localStorage.getItem(key) !== 'closed');
+  const [open, setOpen] = useState(false);
 
-  const toggle = () => {
-    const next = !open;
-    setOpen(next);
-    localStorage.setItem(key, next ? 'open' : 'closed');
-  };
+  useEffect(() => {
+    if (!open) return;
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [open]);
+
+  const show = () => setOpen(true);
 
   return (
-    <div className={`coach${open ? ' open' : ''}`}>
-      <button className="coach-head" onClick={toggle}>
-        <span className="coach-ico">💡</span>
-        <span className="coach-title">{title}</span>
-        <span className="coach-chev">{open ? '−' : '+'}</span>
+    <>
+      <button
+        className="coach-btn"
+        onClick={show}
+        title={title}
+        aria-label={title}
+      >
+        ?
       </button>
-      {open && <div className="coach-body">{children}</div>}
-    </div>
+
+      {open && (
+        <div className="ask-overlay" onClick={() => setOpen(false)}>
+          <div className="ask ask-wide coach-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>💡 {title}</h3>
+            <div className="coach-body">{children}</div>
+            <div className="ask-actions">
+              <button className="primary" onClick={() => setOpen(false)}>OK</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

@@ -14,6 +14,10 @@ export default function WeekView() {
   const tasks = useStore((s) => s.tasks);
   const addWeekGoal = useStore((s) => s.addWeekGoal);
   const deleteWeekGoal = useStore((s) => s.deleteWeekGoal);
+  const doneWeekGoals = useStore((s) => s.doneWeekGoals)();
+  const completeWeekGoal = useStore((s) => s.completeWeekGoal);
+  const reopenWeekGoal = useStore((s) => s.reopenWeekGoal);
+  const weekGoalAllDone = useStore((s) => s.weekGoalAllDone);
   const addTask = useStore((s) => s.addTask);
   const toggleTask = useStore((s) => s.toggleTask);
   const deleteTask = useStore((s) => s.deleteTask);
@@ -22,6 +26,7 @@ export default function WeekView() {
   const [mgId, setMgId] = useState('');
   const [taskDraft, setTaskDraft] = useState<Record<string, string>>({});
   const [ask, setAsk] = useState<AskState>(null);
+  const [adding, setAdding] = useState(false);
   const t = useT();
 
   const full = weekGoals.length >= MAX_WEEK_GOALS;
@@ -30,6 +35,7 @@ export default function WeekView() {
     if (addWeekGoal(mgId, title)) {
       setTitle('');
       setMgId('');
+      setAdding(false);
     }
   };
 
@@ -42,50 +48,20 @@ export default function WeekView() {
           <span className={`cap${full ? ' full' : ''}`}>
             {weekGoals.length}/{MAX_WEEK_GOALS} {t('goals')}
           </span>
+          <Coach id="week" title={t('coachWeekTitle')}>
+            <p>{t('coachWeekBody')}</p>
+            <p className="coach-rule">{t('coachWeekRule')}</p>
+            <Example bad={t('exBadRun')} good={t('exGoodRun')} why={t('exWhyRun')} />
+            <Example bad={t('exBadCheckout')} good={t('exGoodCheckout')} why={t('exWhyCheckout')} />
+            <p className="coach-foot">{t('coachWeekFoot')}</p>
+          </Coach>
         </h2>
-        <p>{t('weekHeadHint')}</p>
       </div>
-
-      <Coach id="week" title={t('coachWeekTitle')}>
-        <p>{t('coachWeekBody')}</p>
-        <p className="coach-rule">{t('coachWeekRule')}</p>
-        <Example bad={t('exBadRun')} good={t('exGoodRun')} why={t('exWhyRun')} />
-        <Example bad={t('exBadCheckout')} good={t('exGoodCheckout')} why={t('exWhyCheckout')} />
-        <p className="coach-foot">{t('coachWeekFoot')}</p>
-      </Coach>
 
       {monthGoals.length === 0 ? (
         <div className="empty">{t('noMonthGoals')}</div>
       ) : (
         <>
-          {!full && (
-            <div className="card">
-              <div className="field">
-                <label>{t('whichMonthGoal')}</label>
-                <select value={mgId} onChange={(e) => setMgId(e.target.value)}>
-                  <option value="">{t('pickMonthGoal')}</option>
-                  {monthGoals.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label>{t('weekGoalLabel')}</label>
-                <input
-                  value={title}
-                  placeholder={t('weekGoalPlaceholder')}
-                  onChange={(e) => setTitle(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && submit()}
-                />
-              </div>
-              <button className="primary" disabled={!mgId || !title.trim()} onClick={submit}>
-                {t('addWeekGoal')}
-              </button>
-            </div>
-          )}
-
           {weekGoals.map((w) => {
             const mg = allMonthGoals.find((g) => g.id === w.monthGoalId);
             const v = allEls.find((x) => x.id === mg?.visionId);
@@ -120,6 +96,15 @@ export default function WeekView() {
                   </button>
                 </div>
 
+                {weekGoalAllDone(w.id) && (
+                  <div className="close-hint">
+                    <span>🎉 {t('allTasksDoneHint')}</span>
+                    <button className="primary" onClick={() => completeWeekGoal(w.id)}>
+                      {t('closeIt')}
+                    </button>
+                  </div>
+                )}
+
                 {mine.map((task) => (
                   <div className={`task${task.done ? ' done' : ''}`} key={task.id}>
                     <button className={`chk${task.done ? ' on' : ''}`} onClick={() => toggleTask(task.id)}>
@@ -148,8 +133,74 @@ export default function WeekView() {
             );
           })}
 
+          {full && (
+            <div className="card cap-note">
+              <b>{t('weekCapReached')}</b>
+              <p className="muted small" style={{ margin: '4px 0 0' }}>{t('capWayOut')}</p>
+            </div>
+          )}
+
+          {!full && (adding ? (
+            <div className="card add-form">
+              <div className="field">
+                <label>{t('whichMonthGoal')}</label>
+                <select value={mgId} onChange={(e) => setMgId(e.target.value)}>
+                  <option value="">{t('pickMonthGoal')}</option>
+                  {monthGoals.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>{t('weekGoalLabel')}</label>
+                <input
+                  value={title}
+                  placeholder={t('weekGoalPlaceholder')}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && submit()}
+                />
+              </div>
+              <div className="row">
+                <button className="ghost" onClick={() => setAdding(false)}>{t('cancel')}</button>
+                <button className="primary" disabled={!mgId || !title.trim()} onClick={submit}>
+                  {t('addWeekGoal')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button className="add-slot-btn" onClick={() => setAdding(true)}>
+              + {t('addWeekGoal')}
+            </button>
+          ))}
+
           {weekGoals.length === 0 && (
             <div className="empty">{t('nothingThisWeek')}</div>
+          )}
+
+          {doneWeekGoals.length > 0 && (
+            <details className="done-list" open>
+              <summary>✓ {t('finishedThisWeek')} ({doneWeekGoals.length})</summary>
+              {doneWeekGoals.map((w) => {
+                const mg = allMonthGoals.find((g) => g.id === w.monthGoalId);
+                return (
+                  <div className="card done-row" key={w.id}>
+                    <span className="done-tick">✓</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="done-title">{w.title}</div>
+                      <div className="thread">{mg?.title ?? '—'}</div>
+                    </div>
+                    <button
+                      className="ghost"
+                      disabled={full}
+                      title={full ? t('reopenBlocked') : t('reopen')}
+                      onClick={() => reopenWeekGoal(w.id)}
+                    >↩</button>
+                  </div>
+                );
+              })}
+            </details>
           )}
         </>
       )}

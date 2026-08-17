@@ -4,6 +4,7 @@ import { todayLabel } from '../dates';
 import { useImage } from '../hooks/useImage';
 import { Coach, Example } from './Coach';
 import { useT } from '../useT';
+import StalledPrompt from './StalledPrompt';
 
 function TaskRow({ task }: { task: Task }) {
   const toggleTask = useStore((s) => s.toggleTask);
@@ -35,6 +36,11 @@ function TaskRow({ task }: { task: Task }) {
           }}
         >
           {task.title}
+          {!task.done && (task.postponed ?? 0) > 0 && (
+            <span className="carry-badge" title={t('rolledOver')}>
+              ↻{task.postponed}
+            </span>
+          )}
         </div>
         <div className="thread">
           {wg?.title} → <b>{vision?.title ?? '—'}</b>
@@ -57,7 +63,15 @@ export default function TodayView() {
   return (
     <div className="view">
       <div className="view-head">
-        <h2>{todayLabel(t.lang)}</h2>
+        <h2>{todayLabel(t.lang)}
+          <Coach id="today" title={t('coachTodayTitle')}>
+            <p>{t('coachTodayBody')}</p>
+            <p className="coach-rule">{t('coachTodayRule')}</p>
+            <Example bad={t('exBadFinance')} good={t('exGoodFinance')} why={t('exWhyFinance')} />
+            <Example bad={t('exBadStripe')} good={t('exGoodStripe')} why={t('exWhyStripe')} />
+            <p className="coach-foot">{t('coachTodayFoot')}</p>
+          </Coach>
+        </h2>
         <p>
           {tasks.length === 0
             ? t('nothingScheduled')
@@ -65,13 +79,7 @@ export default function TodayView() {
         </p>
       </div>
 
-      <Coach id="today" title={t('coachTodayTitle')}>
-        <p>{t('coachTodayBody')}</p>
-        <p className="coach-rule">{t('coachTodayRule')}</p>
-        <Example bad={t('exBadFinance')} good={t('exGoodFinance')} why={t('exWhyFinance')} />
-        <Example bad={t('exBadStripe')} good={t('exGoodStripe')} why={t('exWhyStripe')} />
-        <p className="coach-foot">{t('coachTodayFoot')}</p>
-      </Coach>
+      <StalledPrompt />
 
       {tasks.length === 0 ? (
         <div className="empty">

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import type { AppState, Board, BoardElement, MonthGoal, ShapeKind, Task, Tool, WeekGoal } from './types';
-import { MAX_MITS, MAX_MONTH_GOALS, MAX_WEEK_GOALS, MAX_ZOOM, MIN_ZOOM, SPAWN_H, SPAWN_W, STARVE_AFTER_DAYS } from './types';
+import { MAX_MITS, MAX_MONTH_GOALS, MAX_WEEK_GOALS, MAX_ZOOM, MIN_ZOOM, POSTPONE_LIMIT, SPAWN_H, SPAWN_W, STARVE_AFTER_DAYS } from './types';
 import { dayKey, monthKey, weekKey } from './dates';
 import type { Lang } from './i18n';
 import { loadState, saveState, putImage, deleteImage } from './storage';
@@ -111,8 +111,27 @@ interface Store extends AppState {
 
   // goals
   addMonthGoal: (visionId: string, title: string) => string | null;
+  /** Mark a goal done so it leaves the active count and frees a slot. */
+  completeMonthGoal: (id: string) => void;
+  reopenMonthGoal: (id: string) => void;
+  completeWeekGoal: (id: string) => void;
+  reopenWeekGoal: (id: string) => void;
+  /** Goals finished this month/week — shown separately, not counted in the cap. */
+  doneMonthGoals: () => MonthGoal[];
+  doneWeekGoals: () => WeekGoal[];
+  /** True when every task under this goal is done (drives the "close it?" hint). */
+  monthGoalAllDone: (id: string) => boolean;
+  weekGoalAllDone: (id: string) => boolean;
   addWeekGoal: (monthGoalId: string, title: string) => string | null;
-  addTask: (weekGoalId: string, title: string, date?: string) => string | null;
+  addTask: (weekGoalId: string, title: string, date: string, isMit?: boolean) => string | null;
+  /** Move unfinished tasks from past days onto today, counting the postponements. */
+  rollForward: () => number;
+  /** Tasks that have hit the postpone limit and need a decision. */
+  stalledTasks: () => Task[];
+  /** Stop rolling this one — it stays on its day and drops out of Today. */
+  dropTask: (id: string) => void;
+  /** Reset the counter: the user consciously recommitted to it. */
+  recommitTask: (id: string) => void;
   toggleTask: (id: string) => void;
   toggleMit: (id: string) => void;
   deleteMonthGoal: (id: string) => void;
@@ -578,6 +597,126 @@ export const useStore = create<Store>((set, get) => {
 
     // ---------- derived ----------
     visions: () => get().boardElements().filter((e) => e.kind === 'vision'),
+    completeMonthGoal: (id) => {
+      push();
+      set((s) => ({
+        monthGoals: s.monthGoals.map((g) =>
+          g.id === id ? { ...g, status: 'done' as const } : g),
+        // week goals under it retire with it, or they'd dangle in the week view
+        weekGoals: s.weekGoals.map((w) =>
+          w.monthGoalId === id && w.status === 'active'
+            ? { ...w, status: 'done' as const } : w),
+      }));
+      persist();
+    },
+    reopenMonthGoal: (id) => {
+      // Reopening must respect the cap — otherwise close-then-reopen is a
+      // trivial way to get 4/3 and the whole constraint stops meaning anything.
+      if (get().currentMonthGoals().length >= MAX_MONTH_GOALS) return;
+      push();
+      set((s) => ({
+        monthGoals: s.monthGoals.map((g) =>
+          g.id === id ? { ...g, status: 'active' as const } : g),
+      }));
+      persist();
+    },
+    completeWeekGoal: (id) => {
+      push();
+      set((s) => ({
+        weekGoals: s.weekGoals.map((w) =>
+          w.id === id ? { ...w, status: 'done' as const } : w),
+      }));
+      persist();
+    },
+    reopenWeekGoal: (id) => {
+      if (get().currentWeekGoals().length >= MAX_WEEK_GOALS) return;
+      push();
+      set((s) => ({
+        weekGoals: s.weekGoals.map((w) =>
+          w.id === id ? { ...w, status: 'active' as const } : w),
+      }));
+      persist();
+    },
+    doneMonthGoals: () => {
+      const s = get();
+      const ids = s.visions().map((v) => v.id);
+      const mk = monthKey();
+      return s.monthGoals.filter(
+        (g) => g.monthKey === mk && g.status === 'done' && ids.includes(g.visionId));
+    },
+    doneWeekGoals: () => {
+      const s = get();
+      const wk = weekKey();
+      return s.weekGoals.filter((w) => w.weekKey === wk && w.status === 'done');
+    },
+    monthGoalAllDone: (id) => {
+      const s = get();
+      const wgIds = s.weekGoals.filter((w) => w.monthGoalId === id).map((w) => w.id);
+      if (!wgIds.length) return false;
+      const tasks = s.tasks.filter((t) => wgIds.includes(t.weekGoalId));
+      return tasks.length > 0 && tasks.every((t) => t.done);
+    },
+    weekGoalAllDone: (id) => {
+      const s = get();
+      const tasks = s.tasks.filter((t) => t.weekGoalId === id);
+      return tasks.length > 0 && tasks.every((t) => t.done);
+    },
+
+    rollForward: () => {
+      const today = dayKey();
+      const s = get();
+      // Only tasks under a still-active week goal are worth carrying; anything
+      // else belongs to a closed chain and should stay in history.
+      const liveWgIds = new Set(s.weekGoals.filter((w) => w.status === 'active').map((w) => w.id));
+      const stale = s.tasks.filter(
+        (t) => !t.done && t.date < today && liveWgIds.has(t.weekGoalId)
+          && (t.postponed ?? 0) < POSTPONE_LIMIT,
+      );
+      if (stale.length === 0) return 0;
+      const ids = new Set(stale.map((t) => t.id));
+      set((st) => ({
+        tasks: st.tasks.map((t) =>
+          ids.has(t.id)
+            ? {
+                ...t,
+                date: today,
+                postponed: (t.postponed ?? 0) + 1,
+                originalDate: t.originalDate ?? t.date,
+              }
+            : t),
+      }));
+      persist();
+      return stale.length;
+    },
+
+    stalledTasks: () => {
+      const s = get();
+      const today = dayKey();
+      const liveWgIds = new Set(s.weekGoals.filter((w) => w.status === 'active').map((w) => w.id));
+      return s.tasks.filter(
+        (t) => !t.done && liveWgIds.has(t.weekGoalId)
+          && (t.postponed ?? 0) >= POSTPONE_LIMIT && t.date <= today,
+      );
+    },
+
+    dropTask: (id) => {
+      push();
+      set((s) => ({
+        tasks: s.tasks.map((t) =>
+          t.id === id ? { ...t, date: t.originalDate ?? t.date, postponed: -1 } : t),
+      }));
+      persist();
+    },
+
+    recommitTask: (id) => {
+      push();
+      set((s) => ({
+        tasks: s.tasks.map((t) =>
+          t.id === id ? { ...t, date: dayKey(), postponed: 0 } : t),
+      }));
+      persist();
+    },
+
     currentMonthGoals: () => {
       const s = get();
       const ids = s.visions().map((v) => v.id);
@@ -594,7 +733,10 @@ export const useStore = create<Store>((set, get) => {
       const s = get();
       const wgIds = s.currentWeekGoals().map((w) => w.id);
       const d = dayKey();
-      return s.tasks.filter((t) => t.date === d && wgIds.includes(t.weekGoalId));
+      // postponed === -1 means "dropped": it stays in history but is no longer
+      // asked about, so it must not come back into Today.
+      return s.tasks.filter(
+        (t) => t.date === d && wgIds.includes(t.weekGoalId) && t.postponed !== -1);
     },
     visionForTask: (t) => {
       const s = get();

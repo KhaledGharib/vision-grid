@@ -58,6 +58,18 @@ export const STRINGS = {
 
   // ---------- together / social ----------
   tabCircle: { en: 'Together', ar: 'معاً' },
+  tabArchive: { en: 'History', ar: 'السجل' },
+  archiveBlurb: {
+    en: 'Every month you have planned. The planning tabs only show now — this is the record.',
+    ar: 'كل شهر خطّطت فيه. تبويبات التخطيط تعرض الحاضر فقط — وهذا هو السجل.',
+  },
+  archiveEmpty: {
+    en: 'Nothing here yet. Set a month goal and it will start filling up.',
+    ar: 'لا شيء بعد. ضع هدفاً شهرياً وسيبدأ بالامتلاء.',
+  },
+  thisMonthPill: { en: 'now', ar: 'الآن' },
+  tasksWord: { en: 'tasks', ar: 'مهمة' },
+  unfinished: { en: 'unfinished', ar: 'لم يكتمل' },
   circle: { en: 'Together', ar: 'معاً' },
   circleBlurb: {
     en: "One or two people going through it with you — they'll notice when you go quiet.",
@@ -250,7 +262,45 @@ export const STRINGS = {
     en: 'Three goals is the cap. Finish or drop one before adding another.',
     ar: 'ثلاثة أهداف هي الحد الأقصى. أنجز أو احذف هدفاً قبل إضافة آخر.',
   },
-  goals: { en: 'goals', ar: 'أهداف' },
+  goals: { en: 'open', ar: 'مفتوحة' },
+  goalDone: { en: 'Done', ar: 'تم' },
+  markGoalDone: {
+    en: 'Mark finished — frees a slot for a new goal',
+    ar: 'وسّمه كمنجَز — يفتح خانة لهدف جديد',
+  },
+  capWayOut: {
+    en: 'Tick off every task under a goal and you can close it — that frees the slot.',
+    ar: 'أنجز كل المهام تحت أي هدف وستقدر تسكّره — وهذا يفتح الخانة.',
+  },
+  allTasksDoneHint: {
+    en: 'Every task under this is done.',
+    ar: 'كل المهام تحت هذا الهدف مُنجزة.',
+  },
+  closeIt: { en: 'Close it', ar: 'سكّره' },
+  finishedThisMonth: { en: 'Finished this month', ar: 'أُنجز هذا الشهر' },
+  finishedThisWeek: { en: 'Finished this week', ar: 'أُنجز هذا الأسبوع' },
+  weekCapReached: {
+    en: 'Two week goals is the cap.',
+    ar: 'هدفان أسبوعيان هو الحد.',
+  },
+  reopen: { en: 'Reopen', ar: 'أعد فتحه' },
+  stalledTitle: {
+    en: 'These keep moving',
+    ar: 'هذه تُؤجَّل باستمرار',
+  },
+  stalledBody: {
+    en: 'These rolled over {n} times. Either today is the day, or they should leave the list.',
+    ar: 'رُحّلت {n} مرات. إمّا أن يكون اليوم موعدها، أو أن تخرج من القائمة.',
+  },
+  postponedTimes: { en: 'postponed {n}×', ar: 'أُجّلت {n} مرات' },
+  plannedFor: { en: 'planned for', ar: 'كانت ليوم' },
+  doItToday: { en: 'Do it today', ar: 'أنجزها اليوم' },
+  notNow: { en: 'Not now', ar: 'ليس الآن' },
+  rolledOver: { en: 'carried over', ar: 'مُرحّلة' },
+  reopenBlocked: {
+    en: 'No free slot — close another goal first',
+    ar: 'لا توجد خانة فارغة — سكّر هدفاً آخر أولاً',
+  },
   monthCapLine: {
     en: 'Three goals maximum. The limit is the feature — it forces you to choose.',
     ar: 'ثلاثة أهداف كحد أقصى. الحد هو الميزة — يجبرك على الاختيار.',

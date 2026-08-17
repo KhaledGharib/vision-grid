@@ -5,6 +5,18 @@ import { monthKey, monthLabel } from '../dates';
 import { Coach, Example } from './Coach';
 import { useT } from '../useT';
 import Ask, { type AskState } from './Ask';
+import VisionPicker from './VisionPicker';
+import { useImage } from '../hooks/useImage';
+import type { BoardElement } from '../types';
+
+/** The vision's picture next to its goal, so the link is visible not textual. */
+function GoalThumb({ el }: { el?: BoardElement }) {
+  const url = useImage(el?.imageId);
+  if (!el) return null;
+  return url
+    ? <img src={url} alt="" className="goal-thumb" draggable={false} />
+    : <div className="goal-thumb goal-thumb-ph">🎯</div>;
+}
 
 export default function MonthView() {
   const myVisions = useStore((s) => s.visions)();
@@ -12,11 +24,16 @@ export default function MonthView() {
   const addMonthGoal = useStore((s) => s.addMonthGoal);
   const deleteMonthGoal = useStore((s) => s.deleteMonthGoal);
   const goals = useStore((s) => s.currentMonthGoals)();
+  const doneGoals = useStore((s) => s.doneMonthGoals)();
+  const completeMonthGoal = useStore((s) => s.completeMonthGoal);
+  const reopenMonthGoal = useStore((s) => s.reopenMonthGoal);
+  const monthGoalAllDone = useStore((s) => s.monthGoalAllDone);
   const weekGoals = useStore((s) => s.weekGoals);
   const [title, setTitle] = useState('');
   const [visionId, setVisionId] = useState('');
   const t = useT();
   const [ask, setAsk] = useState<AskState>(null);
+  const [adding, setAdding] = useState(false);
 
   const full = goals.length >= MAX_MONTH_GOALS;
 
@@ -24,6 +41,7 @@ export default function MonthView() {
     if (addMonthGoal(visionId, title)) {
       setTitle('');
       setVisionId('');
+      setAdding(false);
     }
   };
 
@@ -36,18 +54,16 @@ export default function MonthView() {
           <span className={`cap${full ? ' full' : ''}`}>
             {goals.length}/{MAX_MONTH_GOALS} {t('goals')}
           </span>
+          <Coach id="month" title={t('coachMonthTitle')}>
+            <p>{t('coachMonthBody')}</p>
+            <p className="coach-rule">{t('coachMonthRule')}</p>
+            <Example bad={t('exBadFit')} good={t('exGoodFit')} why={t('exWhyFit')} />
+            <Example bad={t('exBadApp')} good={t('exGoodApp')} why={t('exWhyApp')} />
+            <Example bad={t('exBadSave')} good={t('exGoodSave')} why={t('exWhySave')} />
+            <p className="coach-foot">{t('coachMonthFoot')}</p>
+          </Coach>
         </h2>
-        <p>{t('monthCapLine')}</p>
       </div>
-
-      <Coach id="month" title={t('coachMonthTitle')}>
-        <p>{t('coachMonthBody')}</p>
-        <p className="coach-rule">{t('coachMonthRule')}</p>
-        <Example bad={t('exBadFit')} good={t('exGoodFit')} why={t('exWhyFit')} />
-        <Example bad={t('exBadApp')} good={t('exGoodApp')} why={t('exWhyApp')} />
-        <Example bad={t('exBadSave')} good={t('exGoodSave')} why={t('exWhySave')} />
-        <p className="coach-foot">{t('coachMonthFoot')}</p>
-      </Coach>
 
       {myVisions.length === 0 ? (
         <div className="empty">
@@ -57,43 +73,14 @@ export default function MonthView() {
         </div>
       ) : (
         <>
-          {!full && (
-            <div className="card">
-              <div className="field">
-                <label>{t('whichVision')}</label>
-                <select value={visionId} onChange={(e) => setVisionId(e.target.value)}>
-                  <option value="">{t('pickVision')}</option>
-                  {myVisions.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label>{t('monthGoalLabel')}</label>
-                <input
-                  value={title}
-                  placeholder={t('monthGoalPlaceholder')}
-                  onChange={(e) => setTitle(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && submit()}
-                />
-              </div>
-              <button className="primary" disabled={!visionId || !title.trim()} onClick={submit}>
-                {t('addMonthGoal')}
-              </button>
-            </div>
-          )}
-
-          {full && <div className="card muted">{t('monthCapReached')}</div>}
-
           {goals.map((g) => {
             const v = allEls.find((x) => x.id === g.visionId);
             const wks = weekGoals.filter((w) => w.monthGoalId === g.id);
             return (
               <div className="card" key={g.id}>
                 <div className="row">
-                  <div style={{ flex: 1 }}>
+                  <GoalThumb el={v} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15, marginBottom: 4 }}>{g.title}</div>
                     <div className="thread">
                       {t('serves')} <b>{v?.title ?? '—'}</b> · {wks.length} {t('weekGoalCount')}
@@ -112,11 +99,83 @@ export default function MonthView() {
                     ✕
                   </button>
                 </div>
+
+                {monthGoalAllDone(g.id) && (
+                  <div className="close-hint">
+                    <span>🎉 {t('allTasksDoneHint')}</span>
+                    <button className="primary" onClick={() => completeMonthGoal(g.id)}>
+                      {t('closeIt')}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
 
+          {!full && (adding ? (
+            <div className="card add-form">
+              <div className="field">
+                <label>{t('whichVision')}</label>
+                <VisionPicker visions={myVisions} value={visionId} onChange={setVisionId} />
+              </div>
+              <div className="field">
+                <label>{t('monthGoalLabel')}</label>
+                <input
+                  value={title}
+                  placeholder={t('monthGoalPlaceholder')}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && submit()}
+                />
+              </div>
+              <div className="row">
+                <button className="ghost" onClick={() => setAdding(false)}>{t('cancel')}</button>
+                <button className="primary" disabled={!visionId || !title.trim()} onClick={submit}>
+                  {t('addMonthGoal')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button className="add-slot-btn" onClick={() => setAdding(true)}>
+              + {t('addMonthGoal')}
+            </button>
+          ))}
+
+          {full && (
+            <div className="card cap-note">
+              <b>{t('monthCapReached')}</b>
+              <p className="muted small" style={{ margin: '4px 0 0' }}>
+                {t('capWayOut')}
+              </p>
+            </div>
+          )}
+
           {goals.length === 0 && <div className="empty">{t('noGoalsThisMonth')}</div>}
+
+          {doneGoals.length > 0 && (
+            <details className="done-list" open>
+              <summary>✓ {t('finishedThisMonth')} ({doneGoals.length})</summary>
+              {doneGoals.map((g) => {
+                const v = allEls.find((x) => x.id === g.visionId);
+                return (
+                  <div className="card done-row" key={g.id}>
+                    <span className="done-tick">✓</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="done-title">{g.title}</div>
+                      <div className="thread">{t('serves')} {v?.title ?? '—'}</div>
+                    </div>
+                    <button
+                      className="ghost"
+                      disabled={full}
+                      title={full ? t('reopenBlocked') : t('reopen')}
+                      onClick={() => reopenMonthGoal(g.id)}
+                    >
+                      ↩
+                    </button>
+                  </div>
+                );
+              })}
+            </details>
+          )}
         </>
       )}
     </div>

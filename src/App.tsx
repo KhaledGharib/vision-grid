@@ -11,10 +11,11 @@ import Guide, { guideSeen, markGuideSeen } from './views/Guide';
 import Ask, { type AskState } from './views/Ask';
 import Account from './views/Account';
 import CircleView from './views/CircleView';
+import ArchiveView from './views/ArchiveView';
 import { useSync } from './useSync';
 import { cloudEnabled } from './cloud';
 
-type Tab = 'board' | 'month' | 'week' | 'today' | 'circle';
+type Tab = 'board' | 'month' | 'week' | 'today' | 'archive' | 'circle';
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('today');
@@ -39,9 +40,23 @@ export default function App() {
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
   }, [lang]);
 
+  // Carry unfinished work forward once per day. Runs on open (and on the tab
+  // regaining focus) so a session left open overnight still rolls over.
+  useEffect(() => {
+    const roll = () => {
+      const today = new Date().toISOString().slice(0, 10);
+      if (localStorage.getItem('vg:rolledOn') === today) return;
+      useStore.getState().rollForward();
+      localStorage.setItem('vg:rolledOn', today);
+    };
+    roll();
+    window.addEventListener('focus', roll);
+    return () => window.removeEventListener('focus', roll);
+  }, []);
+
   const tabLabel: Record<Tab, ReturnType<typeof t>> = {
     board: t('tabBoard'), month: t('tabMonth'), week: t('tabWeek'),
-    today: t('tabToday'), circle: t('tabCircle'),
+    today: t('tabToday'), archive: t('tabArchive'), circle: t('tabCircle'),
   };
   const signedIn = syncStatus === 'synced' || syncStatus === 'syncing';
 
@@ -51,7 +66,7 @@ export default function App() {
         <span className="logo">◈ {t('appName')}</span>
 
         <div className="tabs">
-          {(['board', 'month', 'week', 'today', ...(cloudEnabled ? ['circle' as Tab] : [])] as Tab[]).map((id) => (
+          {(['board', 'month', 'week', 'today', 'archive', ...(cloudEnabled ? ['circle' as Tab] : [])] as Tab[]).map((id) => (
             <button
               key={id}
               className={`tab${tab === id ? ' active' : ''}`}
@@ -173,6 +188,7 @@ export default function App() {
       {tab === 'month' && <MonthView />}
       {tab === 'week' && <WeekView />}
       {tab === 'today' && <TodayView />}
+      {tab === 'archive' && <ArchiveView />}
       {tab === 'circle' && <CircleView signedIn={signedIn} />}
 
       <Ask state={ask} onClose={() => setAsk(null)} />

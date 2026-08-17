@@ -8,7 +8,12 @@ import { translate, type StringKey } from './i18n';
  */
 export function useT() {
   const lang = useStore((s) => s.lang);
-  const t = (key: StringKey) => translate(key, lang);
+  const t = (key: StringKey, vars?: Record<string, string>) => {
+    const s = translate(key, lang);
+    return vars
+      ? s.replace(/\{(\w+)\}/g, (m, k) => vars[k] ?? m)
+      : s;
+  };
   t.lang = lang;
   t.isRtl = lang === 'ar';
   return t;
