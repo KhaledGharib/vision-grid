@@ -2,6 +2,8 @@
 
 A vision board that's a **system**, not decoration.
 
+**Live at [visionboard.khaleds.com](https://visionboard.khaleds.com)**
+
 The whole app enforces one chain:
 
 ```
@@ -71,9 +73,44 @@ font too.
 
 ## Planning views
 
-- **Month** — max 3 goals, each must select a vision. The form disappears at 3/3.
+- **Month** — max 3 goals, each must select a vision (picked from a list showing the
+  actual images, not filenames). The add form collapses behind a button so your goals
+  are the first thing on screen.
 - **Week** — max 2 goals, each must select a month goal. Add day tasks inline.
 - **Today** — tasks with vision thumbnail + full thread. Star up to 3 MITs.
+- **History** — every month you have planned, with each goal, week goal and task, and
+  whether it finished. The planning tabs deliberately show only *now*; this is the
+  record.
+
+### The caps have a way out
+
+A cap of 3 means *three things open at once*, not three things per month. When every
+task under a goal is ticked, the goal offers to close:
+
+```
+🎉 Every task under this is done.   [Close it]
+```
+
+Closing frees a slot immediately, and the goal drops into "Finished this month" with an
+↩ to reopen it. Without this the app locked you out until the 1st — the cap protected
+focus but punished finishing.
+
+### Unfinished work carries over
+
+An unfinished task used to simply vanish the next day, and an unfinished week goal
+vanished on Monday with nothing asking about it. Now:
+
+```
+task not ticked  →  rolls to today, badged ↻1
+                 →  ↻2
+                 →  ↻3
+                 →  stops, and asks
+```
+
+After three postponements the task stops rolling silently and surfaces one prompt:
+**Do it today** / **Not now** / **delete**. The original date is kept, so History stays
+honest about when it was actually planned. `POSTPONE_LIMIT` in `types.ts` sets the
+threshold. This is the only thing the carry-over ever asks you — the rest is automatic.
 
 ## Languages — English & العربية
 
@@ -105,9 +142,11 @@ the app teaches it inline.
 - **First-run guide** — a 4-step walkthrough of the chain that ticks off steps as you
   complete them and tells you exactly which tab to open next. Re-open any time with
   the `?` button in the top bar.
-- **Coach panels** — every planning tab has a collapsible card explaining what belongs
-  at that level, with a one-line test and real ✗/✓ examples
-  ("Get fit" → "Run 5km without stopping"). Collapse state is remembered per tab.
+- **Coach panels** — every planning tab has a **?** beside its heading that opens what
+  belongs at that level, with a one-line test and real ✗/✓ examples
+  ("Get fit" → "Run 5km without stopping"). It used to be an always-open card ~480px
+  tall, which pushed your actual goals below the fold — help you have to scroll past
+  is not help.
 
 The rule of thumb the app teaches:
 
@@ -131,13 +170,62 @@ Both are driven purely by **completed tasks**. There is no timer to run.
 Multiple boards are supported, but only the **active** board's goals can receive tasks —
 focus is enforced by design.
 
+## Together — the accountability layer
+
+The original reason the app exists. One or two people going through it with you, who
+notice when you go quiet.
+
+- **Pairing** — "Show my code" mints a 6-character invite code valid 14 days. Your
+  friend redeems it once; the friendship is permanent and unaffected when the code
+  expires. Redeeming twice is a no-op, and you cannot pair with yourself.
+- **Their board, read-only** — you see their real canvas: true coordinates, images,
+  shapes, rotation, z-order, their board background, their progress rings and STARVING
+  badges. Read-only is *structural*, not a disabled button: `ReadOnlyCanvas` renders
+  from a plain array and contains zero store mutations, so there is no code path that
+  could edit their data.
+- **Drill into a vision** — tap any vision on their board to see the goals and tasks
+  behind it, with a **👋 Nudge** beside each unfinished task.
+- **Nudges with context** — a bare task name is useless for accountability, so every
+  nudge carries the chain `vision → month goal → week goal`. Budget is **3 per person
+  per day**, enforced in Postgres rather than the client so it can't be bypassed via
+  the API.
+- **Profiles** — display name plus an emoji avatar and colour (10 emoji × 12 colours,
+  so two people picking 🎯 still look different). One short text column, no uploads, no
+  storage bucket, no moderation surface.
+
+## Account and sync
+
+Cloud is **entirely optional**. Delete `.env` and the app is purely local — the sign-in
+button disappears and nothing else changes.
+
+- Magic-link email sign-in via Supabase; no passwords
+- One JSONB document per user (`boards_state`); images in a private `visions` bucket
+- Row-level security on every table, verified from outside with an anonymous key:
+  reads return `[]`, forged inserts are rejected
+- **Sign-out wipes local data.** An ownership stamp (`vg:localOwner`) records whose
+  board is on this device. Signing in as someone else never uploads the previous
+  person's board into the new account — a real bug this fixed, not a hypothetical one.
+
+Environment:
+
+```bash
+VITE_SUPABASE_URL=https://<project>.supabase.co
+VITE_SUPABASE_KEY=<publishable key>   # never the secret key
+```
+
+Both are baked in at build time, so they must also be set wherever you build (e.g.
+Cloudflare Pages environment variables) — a local `.env` is not visible to CI.
+
+SQL lives in `supabase/`: `schema.sql`, `social.sql`, `nudges.sql`, `profile.sql`.
+
 ## Data
 
 - App state → `localStorage`, key `vision-grid:state:v1`
 - Images → IndexedDB `vision-grid-images`, stored as blobs (never file paths — those break)
 
 Both live behind `src/storage.ts`. Swapping in Tauri + SQLite later means rewriting
-that one file. `userId` is already in the schema so a future social layer isn't a migration.
+that one file. When signed in, the same state is mirrored to Supabase — local stays the
+source of truth and the cloud is a copy, not the other way round.
 
 ### Reset everything
 
@@ -153,34 +241,74 @@ location.reload();
 
 ```
 src/
-  types.ts        domain types + the three caps
+  types.ts        domain types, the three caps, POSTPONE_LIMIT
   dates.ts        day / month / ISO-week key helpers
   storage.ts      persistence adapter  ← the only Tauri-swap point
-  store.ts        zustand store; chain rules, caps, undo/redo enforced here
+  store.ts        zustand store; chain rules, caps, carry-over, undo/redo
   canvas.ts       snapping, bounds, resize math
   export.ts       board -> PNG renderer
   i18n.ts         every UI string, English + Arabic
-  useT.ts         translation hook
+  useT.ts         translation hook, with {n} interpolation
+  cloud.ts        Supabase client + sync status
+  sync.ts         push/pull, sign-out wipe, ownership guard
+  social.ts       invites, friends, nudges, profiles
+  lib/utils.ts    cn() — class merging for the UI components
   hooks/useImage  IndexedDB id -> object URL
+  components/ui/  shadcn primitives: dialog · popover · select · button
+                  input · card · badge · progress · checkbox
   views/          BoardView · BoardCanvas · Inspector · Minimap
-                  MonthView · WeekView · TodayView
+                  MonthView · WeekView · TodayView · ArchiveView
+                  CircleView · FriendBoard · ReadOnlyCanvas
+                  Account · Avatar · VisionPicker · StalledPrompt
                   Guide · Coach · Ask
+supabase/         schema.sql · social.sql · nudges.sql · profile.sql
 ```
+
+### UI components
+
+The chrome uses [shadcn/ui](https://ui.shadcn.com) on Radix primitives — mainly for
+what's tedious to hand-roll correctly: focus trapping in dialogs, focus restore on
+close, collision-aware popovers, and `aria` wiring.
+
+**The four canvas components are deliberately not migrated.** `BoardCanvas`,
+`ReadOnlyCanvas`, `Inspector` and `Minimap` are ~1180 lines of hand-written SVG and
+CSS, because shadcn has no equivalent for an infinite canvas — and they're the part of
+the app that actually matters.
+
+Two things worth knowing if you touch this:
+
+- Radix portals content outside the app tree and **defaults to LTR regardless of
+  `<html dir="rtl">`**. `DirectionProvider` in `App.tsx` fixes it; without it every
+  dropdown renders mirrored inside an otherwise-correct Arabic page.
+- Tailwind owns the class name `ring`. The board's progress ring used
+  `className="ring"` for a year; installing Tailwind silently gave it
+  `box-shadow: 0 0 0 1px`, drawing a literal box around every progress circle. It's
+  `vg-ring` now. Prefix any class name that collides with a utility.
 
 ## Status
 
-Feature-complete for a single user. The board, the enforced chain, the caps,
-the progress signals, the onboarding and the bilingual UI are all shipped and
-verified by driving the real UI.
+Live at **[visionboard.khaleds.com](https://visionboard.khaleds.com)** — Cloudflare
+Pages, auto-deployed from `main`.
+
+Everything below is shipped and verified by driving the real UI, not just by
+typechecking: the board, the enforced chain, the caps and their exit, carry-over,
+history, the bilingual UI, cloud sync, and the accountability layer.
 
 **Shipped**
 
-- Infinite-canvas board; images become visions
-- Enforced chain with hard caps — 3 month goals, 2 week goals, 3 daily MITs
-- Progress rings and starving visions, both driven purely by completed tasks
-- First-run guide + coach panels with worked good/bad examples
-- Full English/Arabic UI with RTL layout
-- Drag-to-draw shapes, PNG export, minimap, undo/redo
+| | |
+|---|---|
+| **Board** | Infinite canvas, images become visions, drag-to-draw shapes, PNG export, minimap, undo/redo |
+| **Chain** | Hard caps — 3 month goals, 2 week goals, 3 daily MITs — with a close-and-free-a-slot exit |
+| **Carry-over** | Unfinished tasks roll forward with a ↻ count, and ask once after 3 |
+| **History** | Every past month with its goals, week goals and individual tasks |
+| **Signals** | Progress rings + starving visions, driven purely by completed tasks |
+| **Onboarding** | First-run guide + per-tab coach panels with worked ✗/✓ examples |
+| **Bilingual** | Full English/العربية with RTL layout; canvas stays LTR by design |
+| **Cloud** | Optional Supabase sync, magic-link auth, RLS verified from outside |
+| **Together** | Invite codes, read-only friend boards, contextual nudges with a DB-enforced budget |
+| **Profiles** | Display name + emoji avatar and colour |
+| **Responsive** | No horizontal overflow at 1440 / 1024 / 768 / 390 |
 
 **Deliberately rejected**
 
@@ -192,20 +320,28 @@ from new rituals the user has to maintain.
 
 ## Roadmap
 
-Nothing is being added until the app has been used with real content for a
-week. Building more on an unused system is how these die.
+**The only thing that matters next: use it for a week.**
 
-**Next, once that's done**
+Every feature since v0.1 has been built without the app being lived in for a full
+cycle. Two of the biggest defects found so far — goals vanishing at the month
+boundary, and the cap locking you out after finishing everything — were only
+obvious once real data sat in it across time. More features on an un-lived-in
+system is how these die.
 
-- **Social** — pair with a friend, see each other's boards, task-specific
-  nudges with a small daily budget. This was the original reason for the app
-  and is the only remaining feature that changes what it *is*.
+**Known gaps, in rough order of how much they'd hurt**
+
+- **Last-write-wins sync.** Two devices editing the same board can overwrite each
+  other. Mitigated by friend access being read-only, but not solved.
+- **No revoke for invite codes**, and expired rows are never pruned.
+- **Sign-out wipe is unverified against two real accounts.** The logic is right and
+  the ownership guard is in place, but it's only been proven in isolation, not by
+  signing in as two people on one machine.
+- **Board templates** — a first attempt was written against the old fixed-artboard
+  model and deleted; it would need rebuilding in world coordinates.
 
 **Later / unscheduled**
 
 - Desktop packaging via Tauri (see below)
-- Board templates (a first attempt was written against the old fixed-artboard
-  model and deleted; it would need rebuilding in world coordinates)
 - Tray widget, wallpaper export
 
 ## Desktop packaging (later)
