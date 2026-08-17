@@ -1,3 +1,0 @@
-# Vision Grid is a single-page app: every route must fall through to index.html
-# so a magic-link callback like /?code=... doesn't 404 on a cold load.
-/*    /index.html   200
