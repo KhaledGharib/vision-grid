@@ -7,6 +7,13 @@ import {
 import { useT } from '../useT';
 import type { SyncStatus } from '../cloud';
 import Avatar from './Avatar';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { Check } from 'lucide-react';
 
 /** Sign-in / profile / sync status. Hidden entirely when cloud is off. */
 export default function Account({
@@ -86,65 +93,74 @@ export default function Account({
       color !== (profile.avatar_color ?? AVATAR_COLORS[0]));
 
   return (
-    <div className="ask-overlay" onClick={onClose}>
-      <div className="ask ask-wide" onClick={(e) => e.stopPropagation()}>
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-[480px] max-h-[86vh] overflow-y-auto">
         {!signedIn ? (
           <>
-            <h3>{t('signIn')}</h3>
-            {sent ? (
-              <p className="ask-body">{t('magicLinkSent')}</p>
-            ) : (
-              <>
-                <p className="ask-body">{t('signInBlurb')}</p>
-                <input
-                  type="email"
-                  value={mail}
-                  placeholder="you@example.com"
-                  onChange={(e) => setMail(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && submit()}
-                />
-              </>
+            <DialogHeader>
+              <DialogTitle>{t('signIn')}</DialogTitle>
+              <DialogDescription>
+                {sent ? t('magicLinkSent') : t('signInBlurb')}
+              </DialogDescription>
+            </DialogHeader>
+
+            {!sent && (
+              <Input
+                type="email"
+                value={mail}
+                placeholder="you@example.com"
+                onChange={(e) => setMail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submit()}
+              />
             )}
-            {err && <p className="ask-err">{err}</p>}
-            <div className="ask-actions">
-              <button className="ghost" onClick={onClose}>{t('close')}</button>
+
+            {err && <p className="text-[12.5px] text-[#f87171]">{err}</p>}
+
+            <DialogFooter>
+              <Button variant="ghost" onClick={onClose}>{t('close')}</Button>
               {!sent && (
-                <button className="primary" disabled={busy || !mail.trim()} onClick={submit}>
+                <Button variant="primary" disabled={busy || !mail.trim()} onClick={submit}>
                   {busy ? '…' : t('sendLink')}
-                </button>
+                </Button>
               )}
-            </div>
+            </DialogFooter>
           </>
         ) : (
           <>
-            <h3>{t('yourProfile')}</h3>
+            <DialogHeader>
+              <DialogTitle>{t('yourProfile')}</DialogTitle>
+            </DialogHeader>
 
-            <div className="profile-head">
+            <div className="flex items-center gap-3.5 rounded-[10px] border border-[#262c38] bg-[#0d0f14] p-3">
               <Avatar emoji={emoji} color={color} name={name || email} size={62} />
-              <div style={{ minWidth: 0 }}>
-                <p className="ask-body" style={{ margin: 0 }}>
-                  {name.trim() || t('unnamedFriend')}
-                </p>
-                <p className="muted small" style={{ margin: '2px 0 0' }}>{email}</p>
+              <div className="min-w-0">
+                <p className="truncate text-[14px]">{name.trim() || t('unnamedFriend')}</p>
+                <p className="mt-0.5 truncate text-[12px] text-[#8b93a4]">{email}</p>
               </div>
             </div>
 
-            <div className="field">
-              <label>{t('displayName')}</label>
-              <input
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12.5px] text-[#8b93a4]">{t('displayName')}</label>
+              <Input
                 value={name}
                 maxLength={40}
                 placeholder={email?.split('@')[0] ?? t('displayName')}
                 onChange={(e) => setName(e.target.value)}
               />
-              <p className="muted small">{t('displayNameHint')}</p>
+              <p className="text-[12px] text-[#8b93a4]">{t('displayNameHint')}</p>
             </div>
 
-            <div className="field">
-              <label>{t('pickEmoji')}</label>
-              <div className="emoji-grid">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12.5px] text-[#8b93a4]">{t('pickEmoji')}</label>
+              <div className="grid grid-cols-6 gap-1.5 rounded-[8px] border border-[#262c38] bg-[#0d0f14] p-1.5">
                 <button
-                  className={`emoji-cell${!emoji ? ' on' : ''}`}
+                  type="button"
+                  className={cn(
+                    'grid aspect-square place-items-center rounded-md border text-[21px] transition-colors',
+                    !emoji
+                      ? 'border-[#f0b429] bg-[#f0b429]/15'
+                      : 'border-transparent hover:bg-[#1b2029]',
+                  )}
                   title={t('noEmoji')}
                   onClick={() => setEmoji(null)}
                 >
@@ -153,7 +169,13 @@ export default function Account({
                 {AVATAR_EMOJI.map((e) => (
                   <button
                     key={e}
-                    className={`emoji-cell${emoji === e ? ' on' : ''}`}
+                    type="button"
+                    className={cn(
+                      'grid aspect-square place-items-center rounded-md border text-[21px] transition-colors',
+                      emoji === e
+                        ? 'border-[#f0b429] bg-[#f0b429]/15'
+                        : 'border-transparent hover:bg-[#1b2029]',
+                    )}
                     onClick={() => setEmoji(e)}
                   >
                     {e}
@@ -162,14 +184,19 @@ export default function Account({
               </div>
             </div>
 
-            <div className="field">
-              <label>{t('avatarColor')}</label>
-              <div className="sw-row">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12.5px] text-[#8b93a4]">{t('avatarColor')}</label>
+              <div className="flex flex-wrap gap-[7px]">
                 {AVATAR_COLORS.map((c) => (
                   <button
                     key={c}
                     type="button"
-                    className={`sw-dot${color === c ? ' on' : ''}`}
+                    className={cn(
+                      'h-[30px] w-[30px] shrink-0 rounded-full border-2 transition-transform',
+                      color === c
+                        ? 'border-white shadow-[0_0_0_2px_#f0b429] scale-110'
+                        : 'border-transparent hover:scale-105',
+                    )}
                     style={{ backgroundColor: c }}
                     onClick={() => setColor(c)}
                     aria-label={c}
@@ -179,31 +206,37 @@ export default function Account({
               </div>
             </div>
 
-            <p className="muted small">
+            <p className="text-[12px] text-[#8b93a4]">
               {status === 'synced' && t('syncedMsg')}
               {status === 'syncing' && t('syncingMsg')}
               {status === 'error' && t('syncErrorMsg')}
             </p>
 
-            {err && <p className="ask-err">{err}</p>}
-            {saved && <p className="ask-ok">✓ {t('profileSaved')}</p>}
+            {err && <p className="text-[12.5px] text-[#f87171]">{err}</p>}
+            {saved && (
+              <p className="flex items-center gap-1.5 text-[12.5px] text-[#34d399]">
+                <Check className="h-3.5 w-3.5" /> {t('profileSaved')}
+              </p>
+            )}
 
-            <div className="ask-actions">
-              <button
-                className="danger ghost"
+            <DialogFooter className="justify-between">
+              <Button
+                variant="ghost"
+                className="text-[#f87171] hover:bg-[#f87171]/10 hover:text-[#f87171]"
                 onClick={async () => { await signOut(); onClose(); }}
               >
                 {t('signOut')}
-              </button>
-              <div className="spacer" />
-              <button className="ghost" onClick={onClose}>{t('close')}</button>
-              <button className="primary" disabled={busy || !dirty} onClick={save}>
-                {busy ? '…' : t('save')}
-              </button>
-            </div>
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={onClose}>{t('close')}</Button>
+                <Button variant="primary" disabled={busy || !dirty} onClick={save}>
+                  {busy ? '…' : t('save')}
+                </Button>
+              </div>
+            </DialogFooter>
           </>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

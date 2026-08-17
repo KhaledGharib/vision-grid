@@ -8,14 +8,29 @@ import Ask, { type AskState } from './Ask';
 import VisionPicker from './VisionPicker';
 import { useImage } from '../hooks/useImage';
 import type { BoardElement } from '../types';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { Check, Plus, Target, Undo2, X } from 'lucide-react';
 
 /** The vision's picture next to its goal, so the link is visible not textual. */
 function GoalThumb({ el }: { el?: BoardElement }) {
   const url = useImage(el?.imageId);
   if (!el) return null;
-  return url
-    ? <img src={url} alt="" className="goal-thumb" draggable={false} />
-    : <div className="goal-thumb goal-thumb-ph">🎯</div>;
+  return url ? (
+    <img
+      src={url}
+      alt=""
+      className="h-10 w-10 shrink-0 rounded-lg border border-[#262c38] object-cover"
+      draggable={false}
+    />
+  ) : (
+    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[#262c38] bg-[#1b2029] text-[#8b93a4]">
+      <Target className="h-4 w-4" />
+    </div>
+  );
 }
 
 export default function MonthView() {
@@ -49,11 +64,11 @@ export default function MonthView() {
     <div className="view">
       <Ask state={ask} onClose={() => setAsk(null)} />
       <div className="view-head">
-        <h2>
-          {monthLabel(monthKey(), t.lang)}{' '}
-          <span className={`cap${full ? ' full' : ''}`}>
+        <h2 className="flex items-center gap-2">
+          {monthLabel(monthKey(), t.lang)}
+          <Badge variant={full ? 'accent' : 'default'}>
             {goals.length}/{MAX_MONTH_GOALS} {t('goals')}
-          </span>
+          </Badge>
           <Coach id="month" title={t('coachMonthTitle')}>
             <p>{t('coachMonthBody')}</p>
             <p className="coach-rule">{t('coachMonthRule')}</p>
@@ -77,17 +92,18 @@ export default function MonthView() {
             const v = allEls.find((x) => x.id === g.visionId);
             const wks = weekGoals.filter((w) => w.monthGoalId === g.id);
             return (
-              <div className="card" key={g.id}>
-                <div className="row">
+              <Card className="mb-3.5" key={g.id}>
+                <div className="flex items-center gap-3">
                   <GoalThumb el={v} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, marginBottom: 4 }}>{g.title}</div>
-                    <div className="thread">
-                      {t('serves')} <b>{v?.title ?? '—'}</b> · {wks.length} {t('weekGoalCount')}
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 text-[15px]">{g.title}</div>
+                    <div className="text-[12.5px] text-[#8b93a4]">
+                      {t('serves')} <b className="text-[#e6e9ef]">{v?.title ?? '—'}</b> · {wks.length} {t('weekGoalCount')}
                     </div>
                   </div>
-                  <button
-                    className="ghost"
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() =>
                       setAsk({
                         kind: 'confirm', danger: true,
@@ -96,82 +112,95 @@ export default function MonthView() {
                       })
                     }
                   >
-                    ✕
-                  </button>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
 
                 {monthGoalAllDone(g.id) && (
-                  <div className="close-hint">
-                    <span>🎉 {t('allTasksDoneHint')}</span>
-                    <button className="primary" onClick={() => completeMonthGoal(g.id)}>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2.5 rounded-[9px] border border-[#34d399]/30 bg-[#34d399]/10 px-3 py-2.5 text-[13px]">
+                    <span className="flex-1">🎉 {t('allTasksDoneHint')}</span>
+                    <Button variant="primary" size="sm" onClick={() => completeMonthGoal(g.id)}>
                       {t('closeIt')}
-                    </button>
+                    </Button>
                   </div>
                 )}
-              </div>
+              </Card>
             );
           })}
 
           {!full && (adding ? (
-            <div className="card add-form">
-              <div className="field">
-                <label>{t('whichVision')}</label>
+            <Card className="mb-3.5 border-[#7a5c14]">
+              <div className="mb-3 flex flex-col gap-1.5">
+                <label className="text-[12.5px] text-[#8b93a4]">{t('whichVision')}</label>
                 <VisionPicker visions={myVisions} value={visionId} onChange={setVisionId} />
               </div>
-              <div className="field">
-                <label>{t('monthGoalLabel')}</label>
-                <input
+              <div className="mb-3 flex flex-col gap-1.5">
+                <label className="text-[12.5px] text-[#8b93a4]">{t('monthGoalLabel')}</label>
+                <Input
                   value={title}
                   placeholder={t('monthGoalPlaceholder')}
                   onChange={(e) => setTitle(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && submit()}
                 />
               </div>
-              <div className="row">
-                <button className="ghost" onClick={() => setAdding(false)}>{t('cancel')}</button>
-                <button className="primary" disabled={!visionId || !title.trim()} onClick={submit}>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setAdding(false)}>{t('cancel')}</Button>
+                <Button variant="primary" disabled={!visionId || !title.trim()} onClick={submit}>
                   {t('addMonthGoal')}
-                </button>
+                </Button>
               </div>
-            </div>
+            </Card>
           ) : (
-            <button className="add-slot-btn" onClick={() => setAdding(true)}>
-              + {t('addMonthGoal')}
+            <button
+              className={cn(
+                'mb-3.5 w-full rounded-[12px] border border-dashed border-[#262c38] p-3.5',
+                'text-[13.5px] text-[#8b93a4] transition-colors',
+                'hover:border-[#7a5c14] hover:bg-[#f0b429]/[.04] hover:text-[#f0b429]',
+              )}
+              onClick={() => setAdding(true)}
+            >
+              <Plus className="me-1 inline h-4 w-4 align-[-3px]" />
+              {t('addMonthGoal')}
             </button>
           ))}
 
           {full && (
-            <div className="card cap-note">
+            <Card className="mb-3.5 border-[#7a5c14] bg-[#f0b429]/[.06]">
               <b>{t('monthCapReached')}</b>
-              <p className="muted small" style={{ margin: '4px 0 0' }}>
-                {t('capWayOut')}
-              </p>
-            </div>
+              <p className="mt-1 text-[12px] text-[#8b93a4]">{t('capWayOut')}</p>
+            </Card>
           )}
 
           {goals.length === 0 && <div className="empty">{t('noGoalsThisMonth')}</div>}
 
           {doneGoals.length > 0 && (
-            <details className="done-list" open>
-              <summary>✓ {t('finishedThisMonth')} ({doneGoals.length})</summary>
+            <details className="mt-5" open>
+              <summary className="cursor-pointer py-1.5 text-[13px] text-[#34d399]">
+                ✓ {t('finishedThisMonth')} ({doneGoals.length})
+              </summary>
               {doneGoals.map((g) => {
                 const v = allEls.find((x) => x.id === g.visionId);
                 return (
-                  <div className="card done-row" key={g.id}>
-                    <span className="done-tick">✓</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div className="done-title">{g.title}</div>
-                      <div className="thread">{t('serves')} {v?.title ?? '—'}</div>
+                  <Card className="mt-2 flex items-center gap-3 opacity-75 transition-opacity hover:opacity-100" key={g.id}>
+                    <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full bg-[#34d399]/15 text-[#34d399]">
+                      <Check className="h-3 w-3" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[14px] text-[#8b93a4] line-through">{g.title}</div>
+                      <div className="text-[12.5px] text-[#8b93a4]">
+                        {t('serves')} {v?.title ?? '—'}
+                      </div>
                     </div>
-                    <button
-                      className="ghost"
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       disabled={full}
                       title={full ? t('reopenBlocked') : t('reopen')}
                       onClick={() => reopenMonthGoal(g.id)}
                     >
-                      ↩
-                    </button>
-                  </div>
+                      <Undo2 className="h-4 w-4" />
+                    </Button>
+                  </Card>
                 );
               })}
             </details>

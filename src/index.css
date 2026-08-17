@@ -51,18 +51,24 @@
 html, body, #root { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--text); overflow: hidden; }
 
-button {
+/* Legacy button styling, scoped so it can't fight Tailwind utilities.
+   A bare `button { border: 1px solid ... }` rule beat every utility class on
+   specificity — dashed borders and transparent backgrounds silently lost.
+   :not([class*="-"]) excludes anything carrying Tailwind classes, which all
+   contain a hyphen. */
+button:not([class*="-"]) {
   font: inherit; cursor: pointer;
   border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
   border-radius: var(--radius); padding: 7px 12px;
   transition: background .15s, border-color .15s;
 }
-button:hover:not(:disabled) { background: #232a35; border-color: #39424f; }
-button:disabled { opacity: .4; cursor: not-allowed; }
-button.primary { background: var(--accent); color: #1a1400; border-color: var(--accent); font-weight: 600; }
-button.primary:hover:not(:disabled) { background: #f7c53f; }
-button.ghost { background: transparent; border-color: transparent; color: var(--muted); }
-button.ghost:hover { background: var(--panel-2); color: var(--text); }
+button:not([class*="-"]):hover:not(:disabled) { background: #232a35; border-color: #39424f; }
+button:disabled { cursor: not-allowed; }
+button:not([class*="-"]):disabled { opacity: .4; }
+button.primary:not([class*="-"]) { background: var(--accent); color: #1a1400; border-color: var(--accent); font-weight: 600; }
+button.primary:not([class*="-"]):hover:not(:disabled) { background: #f7c53f; }
+button.ghost:not([class*="-"]) { background: transparent; border-color: transparent; color: var(--muted); }
+button.ghost:not([class*="-"]):hover { background: var(--panel-2); color: var(--text); }
 button.on { background: var(--accent); color: #1a1400; border-color: var(--accent); }
 
 input, textarea, select {
