@@ -337,3 +337,11 @@ input[type=range] { padding: 0; }
   font-size: 11px; padding: 2px 7px; border-radius: 4px; white-space: nowrap;
   background: var(--accent); color: #1a1400; font-weight: 700;
 }
+
+/* No native HTML5 drag on board elements — the browser's default drag ghost is a
+   dark translucent snapshot, which is the "black box" seen while moving items.
+   Scoped to .el so the minimap and inspector keep normal behaviour, and text
+   stays selectable while editing. */
+.el, .el * { -webkit-user-drag: none; }
+.el img { -webkit-user-drag: none; pointer-events: none; }
+.el-text[contenteditable='true'] { user-select: text; -webkit-user-select: text; }

@@ -46,7 +46,7 @@ function VisionEl({ e }: { e: BoardElement }) {
   const dim = 1 - starve * 0.45;
 
   return (
-    <div className="el-vision" style={{ borderRadius: e.radius ?? 12 }}>
+    <div className="el-vision" draggable={false} style={{ borderRadius: e.radius ?? 12 }}>
       {url ? (
         <img
           src={url} alt="" draggable={false}
@@ -69,8 +69,8 @@ function VisionEl({ e }: { e: BoardElement }) {
         </div>
       )}
 
-      <div className="el-cap">
-        <span className="el-cap-title">{e.title}</span>
+      <div className="el-cap" draggable={false}>
+        <span className="el-cap-title" draggable={false}>{e.title}</span>
         <span className="el-cap-meta">
           {progress.total > 0 ? `${progress.done}/${progress.total}` : ''}
           {days !== null && days >= 0 ? `${progress.total > 0 ? ' · ' : ''}${days}d` : ''}
@@ -424,6 +424,8 @@ export default function BoardCanvas() {
                 transform: `rotate(${e.rotation}deg)`,
               }}
               onPointerDown={(ev) => onElPointerDown(ev, e)}
+              draggable={false}
+              onDragStart={(ev) => ev.preventDefault()}
               onDoubleClick={() => e.kind === 'text' && setEditingText(e.id)}
             >
               {e.kind === 'vision' && <VisionEl e={e} />}
