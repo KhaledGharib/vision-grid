@@ -10,9 +10,18 @@ import type { AppState } from './types';
  * authors on one document would silently lose someone's edits.
  */
 
+export interface Profile {
+  id: string;
+  display_name: string | null;
+  avatar_emoji: string | null;
+  avatar_color: string | null;
+}
+
 export interface FriendSummary {
   friend_id: string;
   display_name: string | null;
+  avatar_emoji: string | null;
+  avatar_color: string | null;
   updated_at: string | null;
   visions: number;
   tasks_today: number;
@@ -22,13 +31,26 @@ export interface FriendSummary {
 export interface Nudge {
   id: string;
   from_id: string;
-  to_id: string;
+  from_name: string | null;
+  from_emoji: string | null;
+  from_color: string | null;
   task_id: string;
   task_title: string;
   message: string | null;
   created_at: string;
   read_at: string | null;
 }
+
+/** Default palette for emoji avatars — same 12 the board uses. */
+export const AVATAR_COLORS = [
+  '#e0b64a', '#e07a5f', '#81b29a', '#6c9bd1', '#b48ead', '#d1707a',
+  '#5fa8a0', '#c08457', '#8f7fd1', '#7fa650', '#d1943f', '#6f7f8f',
+];
+
+export const AVATAR_EMOJI = [
+  '👨‍💻', '👩‍💻', '🐛', '⚙️', '🤖',
+  '🎯', '🚀', '🧠', '🔥', '☕',
+];
 
 function requireCloud() {
   if (!cloudEnabled || !supabase) throw new Error('cloud_disabled');
@@ -80,6 +102,35 @@ export async function redeemInvite(code: string): Promise<{ friendId: string }> 
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
   return { friendId: row?.friend_id as string };
+}
+
+// ---------- my profile ----------
+
+export async function fetchMyProfile(): Promise<Profile | null> {
+  if (!cloudEnabled || !supabase) return null;
+  const user = await currentUser();
+  if (!user) return null;
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, display_name, avatar_emoji, avatar_color')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as Profile) ?? null;
+}
+
+export async function saveMyProfile(p: {
+  display_name?: string;
+  avatar_emoji?: string;
+  avatar_color?: string;
+}): Promise<void> {
+  const sb = requireCloud();
+  const user = await currentUser();
+  if (!user) throw new Error('not_signed_in');
+  const { error } = await sb
+    .from('profiles')
+    .upsert({ id: user.id, ...p, updated_at: new Date().toISOString() });
+  if (error) throw error;
 }
 
 // ---------- friends ----------
@@ -161,12 +212,7 @@ export async function inbox(): Promise<Nudge[]> {
   if (!cloudEnabled || !supabase) return [];
   const user = await currentUser();
   if (!user) return [];
-  const { data, error } = await supabase
-    .from('nudges')
-    .select('*')
-    .eq('to_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(50);
+  const { data, error } = await supabase.rpc('my_nudges');
   if (error) throw error;
   return (data ?? []) as Nudge[];
 }

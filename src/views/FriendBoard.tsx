@@ -4,6 +4,7 @@ import { useT } from '../useT';
 import { STARVE_AFTER_DAYS, type AppState, type BoardElement, type Task } from '../types';
 import Ask, { type AskState } from './Ask';
 import ReadOnlyCanvas, { type ReadOnlyStats } from './ReadOnlyCanvas';
+import Avatar from './Avatar';
 
 /** The full chain behind one task, so a nudge can name what it's really about. */
 interface Chain {
@@ -220,7 +221,11 @@ export default function FriendBoard({
             </button>
           </div>
         </div>
-        <h2>{friend.display_name ?? t('unnamedFriend')}</h2>
+        <div className="row" style={{ alignItems: 'center', gap: 10 }}>
+          <Avatar emoji={friend.avatar_emoji} color={friend.avatar_color}
+                  name={friend.display_name} size={40} />
+          <h2 style={{ margin: 0 }}>{friend.display_name ?? t('unnamedFriend')}</h2>
+        </div>
         <p>
           {tab === 'board' ? t('tapVisionHint') : t('readOnlyBoard')}
           {' · '}<b style={{ color: 'var(--accent)' }}>{left}</b> {t('nudgesLeft')}
