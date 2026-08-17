@@ -84,6 +84,8 @@ interface Store extends AppState {
   // boards
   /** Overwrite everything (used when the cloud has newer state). */
   replaceState: (s: AppState) => void;
+  /** Back to a fresh, empty board. Used on sign-out. */
+  resetToSeed: () => void;
   addBoard: (name: string) => string;
   renameBoard: (id: string, name: string) => void;
   setActiveBoard: (id: string) => void;
@@ -253,6 +255,24 @@ export const useStore = create<Store>((set, get) => {
     },
 
     // ---------- boards ----------
+    resetToSeed: () => {
+      const fresh = seed();
+      set({
+        version: fresh.version,
+        user: fresh.user,
+        boards: fresh.boards,
+        elements: fresh.elements,
+        monthGoals: fresh.monthGoals,
+        weekGoals: fresh.weekGoals,
+        tasks: fresh.tasks,
+        selection: [],
+        past: [],
+        future: [],
+        panX: 0, panY: 0, zoom: 1,
+      });
+      // deliberately NOT persisted — clearLocal() owns wiping storage
+    },
+
     replaceState: (next) => {
       set({
         version: next.version ?? 3,

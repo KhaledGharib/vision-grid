@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { supabase, cloudEnabled, type SyncStatus } from './cloud';
-import { pushState, pullState, uploadImage, downloadImage, listRemoteImageIds } from './sync';
+import {
+  pushState, pullState, uploadImage, downloadImage, listRemoteImageIds,
+  LAST_PUSH_KEY, OWNER_KEY,
+} from './sync';
 import { useStore } from './store';
-import { getImage, putImage } from './storage';
+import { clearLocal, getImage, putImage } from './storage';
 import type { AppState } from './types';
 
 /**
@@ -18,7 +21,6 @@ import type { AppState } from './types';
  */
 
 const PUSH_DEBOUNCE_MS = 2500;
-const LAST_PUSH_KEY = 'vg:lastPushedAt';
 
 function snapshot(): AppState {
   const s = useStore.getState();
@@ -79,17 +81,28 @@ export function useSync() {
       }
       setStatus('syncing');
       try {
+        const me = (await supabase!.auth.getUser()).data.user?.id ?? null;
+        const localOwner = localStorage.getItem(OWNER_KEY);
         const remote = await pullState();
-        const localPushedAt = localStorage.getItem(LAST_PUSH_KEY);
 
-        if (!remote) {
-          // first sign-in on this account: seed the cloud from local
-          await pushState(snapshot());
-          await syncImagesUp();
-          localStorage.setItem(LAST_PUSH_KEY, new Date().toISOString());
-        } else {
+        // Whose board is sitting in this browser?
+        //  - same account  -> safe to merge by timestamp
+        //  - different account, or unknown provenance -> NEVER upload it.
+        //    Uploading here is how one user's board ended up in another's
+        //    account, so a mismatch always defers to the cloud.
+        const localIsMine = localOwner !== null && localOwner === me;
+        // A board that has NEVER been associated with any account is an
+        // unclaimed local-only board — the pre-cloud upgrade path. The first
+        // account to sign in may adopt it. Once claimed, OWNER_KEY is set and
+        // this can never happen again.
+        const localIsUnclaimed = localOwner === null;
+
+        if (remote) {
+          const localPushedAt = localStorage.getItem(LAST_PUSH_KEY);
           const remoteNewer =
-            !localPushedAt || new Date(remote.updatedAt) > new Date(localPushedAt);
+            !localIsMine || !localPushedAt ||
+            new Date(remote.updatedAt) > new Date(localPushedAt);
+
           if (remoteNewer) {
             await syncImagesDown(remote.state);
             useStore.getState().replaceState(remote.state);
@@ -99,7 +112,21 @@ export function useSync() {
             await syncImagesUp();
             localStorage.setItem(LAST_PUSH_KEY, new Date().toISOString());
           }
+        } else if (localIsMine || localIsUnclaimed) {
+          // this account has no cloud copy yet and the local board is
+          // provably theirs — seed the cloud from it
+          await pushState(snapshot());
+          await syncImagesUp();
+          localStorage.setItem(LAST_PUSH_KEY, new Date().toISOString());
+        } else {
+          // New account on a browser holding someone else's (or unknown)
+          // board. Start clean rather than adopting or uploading it.
+          await clearLocal();
+          useStore.getState().resetToSeed();
+          localStorage.removeItem(LAST_PUSH_KEY);
         }
+
+        if (me) localStorage.setItem(OWNER_KEY, me);
         if (!cancelled) setStatus('synced');
       } catch (err) {
         console.error('[sync] initial sync failed', err);

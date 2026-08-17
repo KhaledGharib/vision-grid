@@ -431,3 +431,96 @@ button.danger:hover { filter: brightness(1.1); }
 .sync-chip.error { color: var(--red); border-color: rgba(248,113,113,.4); }
 .ask-err { color: var(--red); font-size: 12.5px; margin: 8px 0 0; }
 .ask input[type='email'] { width: 100%; }
+
+/* ================= circle / social ================= */
+.friend-row { display: flex; align-items: center; gap: 12px; }
+.friend-avatar {
+  width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%;
+  display: grid; place-items: center; font-weight: 700; font-size: 16px;
+  background: var(--panel-2); color: var(--accent); border: 1px solid var(--border);
+}
+.invite-code {
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 22px; letter-spacing: 4px; font-weight: 700;
+  color: var(--accent); background: var(--bg);
+  border: 1px dashed var(--accent-dim); border-radius: 8px;
+  padding: 8px 16px; user-select: all;
+}
+.nudge { display: flex; align-items: center; gap: 12px; }
+.nudge.unread { border-inline-start: 3px solid var(--accent); }
+
+.friend-gallery {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px; margin-bottom: 8px;
+}
+.fg-tile {
+  position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--border); background: var(--panel);
+}
+.fg-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fg-ph { width: 100%; height: 100%; display: grid; place-items: center;
+  font-size: 30px; background: var(--panel-2); color: var(--muted); }
+.fg-cap {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 8px;
+  background: rgba(0,0,0,.66); font-size: 11.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ================= read-only friend canvas ================= */
+.friend-view {
+  display: flex; flex-direction: column;
+  /* own the remaining viewport so the canvas is never cut off by page flow */
+  height: calc(100vh - var(--topbar-h, 104px));
+  min-height: 0; overflow: hidden;
+}
+.friend-view .view-head { flex: 0 0 auto; }
+.ro-wrap {
+  position: relative; flex: 1 1 auto;
+  min-height: 320px;   /* still usable on a short window */
+  display: flex; overflow: hidden;
+}
+.canvas-viewport.ro {
+  position: relative; flex: 1; overflow: hidden; cursor: grab;
+  border: 1px solid var(--border); border-radius: 12px;
+}
+.canvas-viewport.ro.panning { cursor: grabbing; }
+/* no pointer events on content: nothing here is interactive */
+.ro-el { pointer-events: none; user-select: none; }
+.ro-badge {
+  position: absolute; top: 10px; left: 10px; z-index: 50;
+  font-size: 11px; padding: 4px 10px; border-radius: 20px;
+  background: rgba(13,15,20,.85); color: #b9c0cf;
+  border: 1px solid #39424f; pointer-events: none;
+}
+.ro-zoom { position: absolute; bottom: 12px; right: 12px; z-index: 50; }
+html[dir='rtl'] .ro-badge { left: auto; right: 10px; }
+html[dir='rtl'] .ro-zoom { right: auto; left: 12px; }
+
+/* ---- chain context on friend tasks ---- */
+.chain-crumb {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  font-size: 11.5px; color: var(--muted); margin-bottom: 5px;
+}
+.crumb-img { width: 18px; height: 18px; border-radius: 4px; object-fit: cover; }
+.crumb-v { color: var(--accent); font-weight: 600; }
+.crumb-sep { opacity: .5; }
+.chain-body {
+  font-size: 12.5px; color: var(--muted);
+  border-inline-start: 2px solid var(--accent-dim);
+  padding-inline-start: 10px; margin-bottom: 10px;
+}
+.focus-head { display: flex; align-items: center; gap: 14px; }
+.focus-img {
+  width: 64px; height: 64px; border-radius: 10px; object-fit: cover;
+  border: 1px solid var(--border);
+}
+.chain-block { margin-bottom: 18px; }
+.week-block { margin: 0 0 12px; padding-inline-start: 12px;
+  border-inline-start: 2px solid var(--border); }
+.week-label { font-size: 12.5px; color: var(--muted); margin: 8px 0 6px; }
+.empty.small { padding: 10px 12px; font-size: 12.5px; }
+/* clicking a vision on a friend's canvas is navigation, not editing */
+.ro-el.clickable { pointer-events: auto; cursor: pointer; }
+.ro-el.clickable:hover .el-vision {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}

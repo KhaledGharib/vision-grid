@@ -10,10 +10,11 @@ import TodayView from './views/TodayView';
 import Guide, { guideSeen, markGuideSeen } from './views/Guide';
 import Ask, { type AskState } from './views/Ask';
 import Account from './views/Account';
+import CircleView from './views/CircleView';
 import { useSync } from './useSync';
 import { cloudEnabled } from './cloud';
 
-type Tab = 'board' | 'month' | 'week' | 'today';
+type Tab = 'board' | 'month' | 'week' | 'today' | 'circle';
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('today');
@@ -39,8 +40,10 @@ export default function App() {
   }, [lang]);
 
   const tabLabel: Record<Tab, ReturnType<typeof t>> = {
-    board: t('tabBoard'), month: t('tabMonth'), week: t('tabWeek'), today: t('tabToday'),
+    board: t('tabBoard'), month: t('tabMonth'), week: t('tabWeek'),
+    today: t('tabToday'), circle: t('tabCircle'),
   };
+  const signedIn = syncStatus === 'synced' || syncStatus === 'syncing';
 
   return (
     <div className="app">
@@ -48,7 +51,7 @@ export default function App() {
         <span className="logo">◈ {t('appName')}</span>
 
         <div className="tabs">
-          {(['board', 'month', 'week', 'today'] as Tab[]).map((id) => (
+          {(['board', 'month', 'week', 'today', ...(cloudEnabled ? ['circle' as Tab] : [])] as Tab[]).map((id) => (
             <button
               key={id}
               className={`tab${tab === id ? ' active' : ''}`}
@@ -170,6 +173,7 @@ export default function App() {
       {tab === 'month' && <MonthView />}
       {tab === 'week' && <WeekView />}
       {tab === 'today' && <TodayView />}
+      {tab === 'circle' && <CircleView signedIn={signedIn} />}
 
       <Ask state={ask} onClose={() => setAsk(null)} />
 

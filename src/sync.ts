@@ -1,5 +1,12 @@
 import { supabase, cloudEnabled } from './cloud';
 import type { AppState } from './types';
+import { clearLocal } from './storage';
+import { useStore } from './store';
+
+/** Timestamp of our last successful push. */
+export const LAST_PUSH_KEY = 'vg:lastPushedAt';
+/** Which account the local copy belongs to — guards against cross-account bleed. */
+export const OWNER_KEY = 'vg:localOwner';
 
 /**
  * Cloud sync for the whole app state.
@@ -103,7 +110,19 @@ export async function sendMagicLink(email: string) {
   if (error) throw error;
 }
 
+/**
+ * Sign out AND wipe the local copy.
+ *
+ * Without the wipe, the board stays in this browser and the next account to
+ * sign in gets treated as "cloud is empty, seed it from local" — which
+ * uploaded the previous user's board into a stranger's account. That was a
+ * privacy leak, not just a stale-UI bug.
+ */
 export async function signOut() {
   if (!cloudEnabled || !supabase) return;
   await supabase.auth.signOut();
+  await clearLocal();
+  localStorage.removeItem(LAST_PUSH_KEY);
+  localStorage.removeItem(OWNER_KEY);
+  useStore.getState().resetToSeed();
 }

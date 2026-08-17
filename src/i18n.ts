@@ -45,6 +45,88 @@ export const STRINGS = {
   },
   syncedShort: { en: 'Synced', ar: 'متزامن' },
   offlineShort: { en: 'Local only', ar: 'محلي فقط' },
+
+  // ---------- together / social ----------
+  tabCircle: { en: 'Together', ar: 'معاً' },
+  circle: { en: 'Together', ar: 'معاً' },
+  circleBlurb: {
+    en: "One or two people going through it with you — they'll notice when you go quiet.",
+    ar: 'شخص أو اثنان يسيران معك — سيلاحظان إذا توقفت.',
+  },
+  circleNeedsCloud: {
+    en: 'Sharing needs the cloud, which is not configured in this build.',
+    ar: 'المشاركة تحتاج السحابة، وهي غير مُهيّأة في هذه النسخة.',
+  },
+  circleNeedsSignIn: {
+    en: 'Sign in first — pairing needs an account on both sides.',
+    ar: 'سجّل الدخول أولاً — الاقتران يحتاج حساباً من الطرفين.',
+  },
+  yourCircle: { en: 'Doing this with you', ar: 'يسيرون معك' },
+  noFriendsYet: {
+    en: 'Nobody yet. Share your code below with one person who will actually ask you about it.',
+    ar: 'لا أحد بعد. شارك رمزك أدناه مع شخص واحد سيسألك عنه فعلاً.',
+  },
+  addAFriend: { en: 'Add someone', ar: 'إضافة شخص' },
+  yourCode: { en: 'Your invite code', ar: 'رمز الدعوة الخاص بك' },
+  showMyCode: { en: 'Show my code', ar: 'أظهر رمزي' },
+  copy: { en: 'Copy', ar: 'نسخ' },
+  codeHint: {
+    en: 'Send this to one person. It works for 14 days.',
+    ar: 'أرسل هذا لشخص واحد. صالح لمدة ١٤ يوماً.',
+  },
+  haveACode: { en: 'Got a code from someone?', ar: 'لديك رمز من شخص ما؟' },
+  connect: { en: 'Connect', ar: 'اتصال' },
+  codeInvalid: { en: 'That code is wrong or expired.', ar: 'هذا الرمز خطأ أو منتهي.' },
+  codeIsYours: { en: "That's your own code.", ar: 'هذا رمزك أنت.' },
+  unnamedFriend: { en: 'Someone', ar: 'شخص' },
+  doneToday: { en: 'done today', ar: 'مُنجز اليوم' },
+  nothingPlannedToday: { en: 'Nothing planned today.', ar: 'لا شيء مخطط اليوم.' },
+  quiet: { en: 'quiet', ar: 'صامت' },
+  viewBoard: { en: 'View board', ar: 'عرض اللوحة' },
+  unfriend: { en: 'Disconnect', ar: 'إلغاء الاتصال' },
+  unfriendConfirm: {
+    en: 'Disconnect from this person? Neither of you will see the other\'s board.',
+    ar: 'إلغاء الاتصال بهذا الشخص؟ لن يرى أي منكما لوحة الآخر.',
+  },
+  sharingReadOnlyNote: {
+    en: 'Sharing is read-only in both directions — a friend can see your board but never change it.',
+    ar: 'المشاركة للقراءة فقط في الاتجاهين — يمكن لصديقك رؤية لوحتك دون تغييرها.',
+  },
+
+  // ---------- friend board ----------
+  readOnlyBoard: { en: 'Read-only view', ar: 'عرض للقراءة فقط' },
+  theirVisions: { en: 'Their visions', ar: 'رؤاهم' },
+  theirToday: { en: 'Their today', ar: 'يومهم' },
+  noVisionsShared: { en: 'No visions on their board yet.', ar: 'لا رؤى في لوحتهم بعد.' },
+  loading: { en: 'Loading…', ar: 'جارٍ التحميل…' },
+  starving: { en: 'starving', ar: 'مهملة' },
+  tapVisionHint: {
+    en: 'Tap a vision to see the goals behind it',
+    ar: 'اضغط على رؤية لترى الأهداف خلفها',
+  },
+  noGoalsForVision: {
+    en: 'No goals attached to this vision yet.',
+    ar: 'لا أهداف مرتبطة بهذه الرؤية بعد.',
+  },
+  noWeekGoals: { en: 'No week goals under this month.', ar: 'لا أهداف أسبوعية تحت هذا الشهر.' },
+  noTasksYet: { en: 'No tasks yet.', ar: 'لا مهام بعد.' },
+
+  // ---------- nudges ----------
+  nudge: { en: 'Nudge', ar: 'تنبيه' },
+  nudged: { en: 'Nudged', ar: 'تم' },
+  sendNudge: { en: 'Send', ar: 'إرسال' },
+  nudgeAbout: { en: 'Nudge about', ar: 'تنبيه بشأن' },
+  nudgePlaceholder: {
+    en: 'Optional — one line, kind or blunt',
+    ar: 'اختياري — سطر واحد، لطيف أو صريح',
+  },
+  nudgesLeft: { en: 'nudges left today', ar: 'تنبيهات متاحة اليوم' },
+  budgetGone: {
+    en: "You've used today's nudges for this person. Three a day is the cap.",
+    ar: 'استخدمت تنبيهات اليوم لهذا الشخص. ثلاثة يومياً هو الحد.',
+  },
+  nudgesForYou: { en: 'Nudges for you', ar: 'تنبيهات لك' },
+  markRead: { en: 'Got it', ar: 'فهمت' },
   boardNamePlaceholder: {
     en: 'e.g. Health, Career, Money',
     ar: 'مثال: الصحة، العمل، المال',

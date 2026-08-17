@@ -28,6 +28,21 @@ export function saveState(state: AppState): void {
   }
 }
 
+/**
+ * Wipe everything local: state JSON and every image blob.
+ * Used on sign-out so the next account never inherits the previous
+ * account's board.
+ */
+export async function clearLocal(): Promise<void> {
+  localStorage.removeItem(STATE_KEY);
+  await new Promise<void>((resolve) => {
+    const req = indexedDB.deleteDatabase(DB_NAME);
+    req.onsuccess = () => resolve();
+    req.onerror = () => resolve();
+    req.onblocked = () => resolve(); // an open handle shouldn't hang sign-out
+  });
+}
+
 export function exportState(state: AppState): void {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
