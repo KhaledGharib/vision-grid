@@ -83,6 +83,7 @@ interface Store extends AppState {
 
   // boards
   addBoard: (name: string) => string;
+  renameBoard: (id: string, name: string) => void;
   setActiveBoard: (id: string) => void;
   deleteBoard: (id: string) => void;
   setBoardBg: (color: string) => void;
@@ -267,6 +268,16 @@ export const useStore = create<Store>((set, get) => {
       persist();
       return id;
     },
+    renameBoard: (id, name) => {
+      const clean = name.trim();
+      if (!clean) return;
+      push();
+      set((s) => ({
+        boards: s.boards.map((b) => (b.id === id ? { ...b, name: clean } : b)),
+      }));
+      persist();
+    },
+
     setActiveBoard: (id) => {
       set((s) => ({ boards: s.boards.map((b) => ({ ...b, isActive: b.id === id })), selection: [] }));
       persist();

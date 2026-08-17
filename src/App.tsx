@@ -19,6 +19,7 @@ export default function App() {
   const boards = useStore((s) => s.boards);
   const setActiveBoard = useStore((s) => s.setActiveBoard);
   const addBoard = useStore((s) => s.addBoard);
+  const renameBoard = useStore((s) => s.renameBoard);
   const state = useStore();
 
   const active = boards.find((b) => b.isActive);
@@ -70,6 +71,24 @@ export default function App() {
               </option>
             ))}
           </select>
+          <button
+            className="ghost"
+            title={t('renameBoard')}
+            disabled={!active}
+            onClick={() =>
+              active &&
+              setAsk({
+                kind: 'prompt',
+                title: t('renameBoardTitle'),
+                placeholder: t('boardNamePlaceholder'),
+                value: active.name,
+                okLabel: t('save'),
+                onOk: (name) => renameBoard(active.id, name),
+              })
+            }
+          >
+            ✎
+          </button>
           <button
             className="ghost"
             title={t('newBoard')}

@@ -9,7 +9,8 @@ import { useT } from '../useT';
  * the whole page is frozen. That made buttons look broken.
  */
 export type AskState =
-  | { kind: 'prompt'; title: string; placeholder?: string; value?: string; onOk: (v: string) => void }
+  | { kind: 'prompt'; title: string; placeholder?: string; value?: string;
+      okLabel?: string; onOk: (v: string) => void }
   | { kind: 'confirm'; title: string; body?: string; danger?: boolean; onOk: () => void }
   | null;
 
@@ -74,7 +75,7 @@ export default function Ask({ state, onClose }: { state: AskState; onClose: () =
             disabled={state.kind === 'prompt' && !val.trim()}
             onClick={submit}
           >
-            {state.kind === 'prompt' ? t('create') : t('confirmBtn')}
+            {state.kind === 'prompt' ? (state.okLabel ?? t('create')) : t('confirmBtn')}
           </button>
         </div>
       </div>

@@ -22,6 +22,9 @@ export const STRINGS = {
   tabToday: { en: 'Today', ar: 'اليوم' },
   newBoard: { en: 'New board', ar: 'لوحة جديدة' },
   newBoardPrompt: { en: 'Name your new board', ar: 'سمِّ لوحتك الجديدة' },
+  renameBoard: { en: 'Rename this board', ar: 'إعادة تسمية اللوحة' },
+  renameBoardTitle: { en: 'Rename board', ar: 'إعادة تسمية اللوحة' },
+  save: { en: 'Save', ar: 'حفظ' },
   boardNamePlaceholder: {
     en: 'e.g. Health, Career, Money',
     ar: 'مثال: الصحة، العمل، المال',
