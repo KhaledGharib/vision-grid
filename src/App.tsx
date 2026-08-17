@@ -8,12 +8,14 @@ import MonthView from './views/MonthView';
 import WeekView from './views/WeekView';
 import TodayView from './views/TodayView';
 import Guide, { guideSeen, markGuideSeen } from './views/Guide';
+import Ask, { type AskState } from './views/Ask';
 
 type Tab = 'board' | 'month' | 'week' | 'today';
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('today');
   const [showGuide, setShowGuide] = useState(() => !guideSeen());
+  const [ask, setAsk] = useState<AskState>(null);
   const boards = useStore((s) => s.boards);
   const setActiveBoard = useStore((s) => s.setActiveBoard);
   const addBoard = useStore((s) => s.addBoard);
@@ -71,13 +73,17 @@ export default function App() {
           <button
             className="ghost"
             title={t('newBoard')}
-            onClick={() => {
-              const n = prompt(t('newBoardPrompt'));
-              if (n?.trim()) {
-                addBoard(n.trim());
-                setTab('board'); // land on the new (now active) board
-              }
-            }}
+            onClick={() =>
+              setAsk({
+                kind: 'prompt',
+                title: t('newBoardPrompt'),
+                placeholder: t('boardNamePlaceholder'),
+                onOk: (name) => {
+                  addBoard(name);
+                  setTab('board'); // land on the new (now active) board
+                },
+              })
+            }
           >
             + {t('boardPanel')}
           </button>
@@ -127,6 +133,8 @@ export default function App() {
       {tab === 'month' && <MonthView />}
       {tab === 'week' && <WeekView />}
       {tab === 'today' && <TodayView />}
+
+      <Ask state={ask} onClose={() => setAsk(null)} />
 
       {showGuide && (
         <Guide

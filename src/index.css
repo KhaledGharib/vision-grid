@@ -406,3 +406,20 @@ html[dir='rtl'] .inspector { text-align: right; }
 .board-empty h3 { margin: 0; font-size: 19px; }
 .board-empty p { margin: 0 0 16px; max-width: 380px; color: var(--muted);
   font-size: 13.5px; line-height: 1.6; }
+
+/* ================= in-app dialog (replaces native prompt/confirm) ================= */
+.ask-overlay {
+  position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center;
+  background: rgba(5,7,10,.66); backdrop-filter: blur(2px); padding: 24px;
+}
+.ask {
+  width: min(420px, 100%); background: var(--panel);
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 20px 22px; box-shadow: 0 20px 60px #000c;
+}
+.ask h3 { margin: 0 0 14px; font-size: 16.5px; }
+.ask input { width: 100%; }
+.ask-body { margin: 0 0 4px; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+.ask-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+button.danger { background: var(--red); border-color: var(--red); color: #2b0b0b; font-weight: 700; }
+button.danger:hover { filter: brightness(1.1); }

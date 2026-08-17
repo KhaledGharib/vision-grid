@@ -4,6 +4,7 @@ import { MAX_WEEK_GOALS } from '../types';
 import { dayKey, weekKey } from '../dates';
 import { Coach, Example } from './Coach';
 import { useT } from '../useT';
+import Ask, { type AskState } from './Ask';
 
 export default function WeekView() {
   const monthGoals = useStore((s) => s.currentMonthGoals)();
@@ -20,6 +21,7 @@ export default function WeekView() {
   const [title, setTitle] = useState('');
   const [mgId, setMgId] = useState('');
   const [taskDraft, setTaskDraft] = useState<Record<string, string>>({});
+  const [ask, setAsk] = useState<AskState>(null);
   const t = useT();
 
   const full = weekGoals.length >= MAX_WEEK_GOALS;
@@ -33,6 +35,7 @@ export default function WeekView() {
 
   return (
     <div className="view">
+      <Ask state={ask} onClose={() => setAsk(null)} />
       <div className="view-head">
         <h2>
           {t('thisWeek')} · {weekKey()}{' '}
@@ -105,7 +108,13 @@ export default function WeekView() {
                   </span>
                   <button
                     className="ghost"
-                    onClick={() => confirm(t('confirmDeleteWeek')) && deleteWeekGoal(w.id)}
+                    onClick={() =>
+                      setAsk({
+                        kind: 'confirm', danger: true,
+                        title: t('deleteQ'), body: t('confirmDeleteWeek'),
+                        onOk: () => deleteWeekGoal(w.id),
+                      })
+                    }
                   >
                     ✕
                   </button>

@@ -21,9 +21,10 @@ export const STRINGS = {
   tabWeek: { en: 'Week', ar: 'الأسبوع' },
   tabToday: { en: 'Today', ar: 'اليوم' },
   newBoard: { en: 'New board', ar: 'لوحة جديدة' },
-  newBoardPrompt: {
-    en: 'Board name (e.g. Health, Career, Money)',
-    ar: 'اسم اللوحة (مثل: الصحة، العمل، المال)',
+  newBoardPrompt: { en: 'Name your new board', ar: 'سمِّ لوحتك الجديدة' },
+  boardNamePlaceholder: {
+    en: 'e.g. Health, Career, Money',
+    ar: 'مثال: الصحة، العمل، المال',
   },
   activeBoardTitle: {
     en: "Active board — only this board's goals can get tasks",
@@ -330,6 +331,10 @@ export const STRINGS = {
   goTo: { en: 'Go to', ar: 'اذهب إلى' },
   gotIt: { en: 'Got it', ar: 'فهمت' },
   close: { en: 'Close', ar: 'إغلاق' },
+  cancel: { en: 'Cancel', ar: 'إلغاء' },
+  create: { en: 'Create', ar: 'إنشاء' },
+  confirmBtn: { en: 'Confirm', ar: 'تأكيد' },
+  deleteQ: { en: 'Delete', ar: 'حذف' },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;
