@@ -9,6 +9,9 @@ import WeekView from './views/WeekView';
 import TodayView from './views/TodayView';
 import Guide, { guideSeen, markGuideSeen } from './views/Guide';
 import Ask, { type AskState } from './views/Ask';
+import Account from './views/Account';
+import { useSync } from './useSync';
+import { cloudEnabled } from './cloud';
 
 type Tab = 'board' | 'month' | 'week' | 'today';
 
@@ -16,6 +19,8 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('today');
   const [showGuide, setShowGuide] = useState(() => !guideSeen());
   const [ask, setAsk] = useState<AskState>(null);
+  const [showAccount, setShowAccount] = useState(false);
+  const { status: syncStatus, email } = useSync();
   const boards = useStore((s) => s.boards);
   const setActiveBoard = useStore((s) => s.setActiveBoard);
   const addBoard = useStore((s) => s.addBoard);
@@ -108,6 +113,19 @@ export default function App() {
           </button>
         </div>
 
+        {cloudEnabled && (
+          <button
+            className={`ghost sync-chip ${syncStatus}`}
+            title={t('account')}
+            onClick={() => setShowAccount(true)}
+          >
+            {syncStatus === 'synced' ? '☁ ' + t('syncedShort')
+              : syncStatus === 'syncing' ? '↻ ' + t('syncingMsg')
+              : syncStatus === 'error' ? '⚠ ' + t('syncedShort')
+              : t('signIn')}
+          </button>
+        )}
+
         <select
           className="lang-select"
           title={t('language')}
@@ -154,6 +172,10 @@ export default function App() {
       {tab === 'today' && <TodayView />}
 
       <Ask state={ask} onClose={() => setAsk(null)} />
+
+      {showAccount && (
+        <Account status={syncStatus} email={email} onClose={() => setShowAccount(false)} />
+      )}
 
       {showGuide && (
         <Guide

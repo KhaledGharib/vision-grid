@@ -423,3 +423,11 @@ html[dir='rtl'] .inspector { text-align: right; }
 .ask-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 button.danger { background: var(--red); border-color: var(--red); color: #2b0b0b; font-weight: 700; }
 button.danger:hover { filter: brightness(1.1); }
+
+/* ================= cloud sync ================= */
+.sync-chip { font-size: 12px; padding: 5px 10px; white-space: nowrap; }
+.sync-chip.synced { color: var(--green); border-color: rgba(52,211,153,.35); }
+.sync-chip.syncing { color: var(--accent); }
+.sync-chip.error { color: var(--red); border-color: rgba(248,113,113,.4); }
+.ask-err { color: var(--red); font-size: 12.5px; margin: 8px 0 0; }
+.ask input[type='email'] { width: 100%; }

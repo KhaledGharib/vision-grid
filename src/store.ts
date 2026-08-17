@@ -82,6 +82,8 @@ interface Store extends AppState {
   zoomAt: (factor: number, vx: number, vy: number) => void;
 
   // boards
+  /** Overwrite everything (used when the cloud has newer state). */
+  replaceState: (s: AppState) => void;
   addBoard: (name: string) => string;
   renameBoard: (id: string, name: string) => void;
   setActiveBoard: (id: string) => void;
@@ -139,7 +141,7 @@ export const useStore = create<Store>((set, get) => {
   const persist = () => {
     const s = get();
     saveState({
-      version: 2, user: s.user, boards: s.boards, elements: s.elements,
+      version: 3, user: s.user, boards: s.boards, elements: s.elements,
       monthGoals: s.monthGoals, weekGoals: s.weekGoals, tasks: s.tasks,
     });
   };
@@ -251,6 +253,22 @@ export const useStore = create<Store>((set, get) => {
     },
 
     // ---------- boards ----------
+    replaceState: (next) => {
+      set({
+        version: next.version ?? 3,
+        user: next.user,
+        boards: next.boards,
+        elements: next.elements,
+        monthGoals: next.monthGoals,
+        weekGoals: next.weekGoals,
+        tasks: next.tasks,
+        selection: [],
+        past: [],
+        future: [],
+      });
+      persist();
+    },
+
     addBoard: (name) => {
       push();
       const id = nanoid();

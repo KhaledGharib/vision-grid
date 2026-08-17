@@ -25,6 +25,26 @@ export const STRINGS = {
   renameBoard: { en: 'Rename this board', ar: 'إعادة تسمية اللوحة' },
   renameBoardTitle: { en: 'Rename board', ar: 'إعادة تسمية اللوحة' },
   save: { en: 'Save', ar: 'حفظ' },
+  account: { en: 'Account', ar: 'الحساب' },
+  signIn: { en: 'Sign in', ar: 'تسجيل الدخول' },
+  signOut: { en: 'Sign out', ar: 'تسجيل الخروج' },
+  sendLink: { en: 'Send link', ar: 'إرسال الرابط' },
+  signInBlurb: {
+    en: 'Sign in to back up your board and reach it from any device. We email you a link — no password.',
+    ar: 'سجّل الدخول لحفظ لوحتك والوصول إليها من أي جهاز. سنرسل رابطاً على بريدك — بدون كلمة مرور.',
+  },
+  magicLinkSent: {
+    en: 'Check your email and open the link to finish signing in.',
+    ar: 'افتح بريدك واضغط الرابط لإكمال تسجيل الدخول.',
+  },
+  syncedMsg: { en: 'Your board is backed up.', ar: 'لوحتك محفوظة في السحابة.' },
+  syncingMsg: { en: 'Syncing…', ar: 'جارٍ المزامنة…' },
+  syncErrorMsg: {
+    en: "Sync failed — your work is still saved on this device.",
+    ar: 'فشلت المزامنة — عملك ما زال محفوظاً على هذا الجهاز.',
+  },
+  syncedShort: { en: 'Synced', ar: 'متزامن' },
+  offlineShort: { en: 'Local only', ar: 'محلي فقط' },
   boardNamePlaceholder: {
     en: 'e.g. Health, Career, Money',
     ar: 'مثال: الصحة، العمل، المال',
