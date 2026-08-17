@@ -98,36 +98,11 @@ export async function exportBoardPng(scale = 2) {
         ctx.ellipse(e.w / 2, e.h / 2, e.w / 2, e.h / 2, 0, 0, Math.PI * 2);
         ctx.fill();
         if (e.strokeWidth) ctx.stroke();
-      } else if (e.shape === 'line') {
-        ctx.fillStyle = e.stroke ?? '#f0b429';
-        ctx.fillRect(0, 0, e.w, e.h);
       } else {
         roundRect(ctx, 0, 0, e.w, e.h, e.radius ?? 8);
         ctx.fill();
         if (e.strokeWidth) ctx.stroke();
       }
-    }
-
-    if (e.kind === 'draw' && e.points?.length) {
-      ctx.strokeStyle = e.stroke ?? '#f0b429';
-      ctx.lineWidth = e.strokeWidth ?? 4;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      const P = e.points.map((p) => ({ x: p.x * e.w, y: p.y * e.h }));
-      ctx.beginPath();
-      ctx.moveTo(P[0].x, P[0].y);
-      if (P.length === 2) {
-        ctx.lineTo(P[1].x, P[1].y);
-      } else {
-        for (let i = 1; i < P.length - 1; i++) {
-          const mx = (P[i].x + P[i + 1].x) / 2;
-          const my = (P[i].y + P[i + 1].y) / 2;
-          ctx.quadraticCurveTo(P[i].x, P[i].y, mx, my);
-        }
-        const last = P[P.length - 1];
-        ctx.lineTo(last.x, last.y);
-      }
-      ctx.stroke();
     }
 
     if (e.kind === 'text') {

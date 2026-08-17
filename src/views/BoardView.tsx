@@ -5,12 +5,11 @@ import Inspector from './Inspector';
 import Minimap from './Minimap';
 import { exportBoardPng } from '../export';
 import { bounds } from '../canvas';
-import { PALETTE } from '../types';
+import { PALETTE, SHAPE_TOOLS } from '../types';
 
 export default function BoardView() {
   const addVision = useStore((s) => s.addVision);
   const addText = useStore((s) => s.addText);
-  const addShape = useStore((s) => s.addShape);
   const deleteSelected = useStore((s) => s.deleteSelected);
   const duplicateSelected = useStore((s) => s.duplicateSelected);
   const undo = useStore((s) => s.undo);
@@ -20,9 +19,8 @@ export default function BoardView() {
   const setPan = useStore((s) => s.setPan);
   const tool = useStore((s) => s.tool);
   const setTool = useStore((s) => s.setTool);
-  const penColor = useStore((s) => s.penColor);
-  const penWidth = useStore((s) => s.penWidth);
-  const setPen = useStore((s) => s.setPen);
+  const shapeColor = useStore((s) => s.shapeColor);
+  const setShapeColor = useStore((s) => s.setShapeColor);
   const zoomAt = useStore((s) => s.zoomAt);
   const select = useStore((s) => s.select);
   const selection = useStore((s) => s.selection);
@@ -83,9 +81,8 @@ export default function BoardView() {
       if (e.shiftKey && e.key === '!') { e.preventDefault(); fitToScreen(false); return; }
       if (e.shiftKey && e.key === '@') { e.preventDefault(); fitToScreen(true); return; }
       if (e.shiftKey && e.key === ')') { e.preventDefault(); zoomCenter(1 / zoom); return; }
-      if (!mod && e.key.toLowerCase() === 'v') { setTool('select'); return; }
-      if (!mod && e.key.toLowerCase() === 'p') { setTool('pen'); return; }
-      if (!mod && e.key.toLowerCase() === 'e') { setTool('eraser'); return; }
+      if (!mod && e.key.toLowerCase() === 'r') { setTool('rect'); return; }
+      if (!mod && e.key.toLowerCase() === 'o') { setTool('ellipse'); return; }
       if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); select(els.map((x) => x.id)); return; }
       if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return; }
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected(); return; }
@@ -116,44 +113,20 @@ export default function BoardView() {
       onPaste={(e) => void onFiles(e.clipboardData.files)}
     >
       <div className="board-toolbar">
-        {/* tools */}
-        <button
-          className={tool === 'select' ? 'on' : ''}
-          title="Select / move (V)"
-          onClick={() => setTool('select')}
-        >➚</button>
-        <button
-          className={tool === 'pen' ? 'on' : ''}
-          title="Draw freehand (P)"
-          onClick={() => setTool('pen')}
-        >✏️</button>
-        <button
-          className={tool === 'eraser' ? 'on' : ''}
-          title="Erase — click any element (E)"
-          onClick={() => setTool('eraser')}
-        >🧽</button>
-
-        {tool === 'pen' && (
+        {SHAPE_TOOLS.includes(tool) && (
           <>
             <span className="tb-sep" />
             <div className="pen-colors">
               {PALETTE.slice(0, 8).map((c) => (
                 <button
                   key={c}
-                  className={`pen-sw${penColor === c ? ' on' : ''}`}
+                  className={`pen-sw${shapeColor === c ? ' on' : ''}`}
                   style={{ background: c }}
                   title={c}
-                  onClick={() => setPen({ color: c })}
+                  onClick={() => setShapeColor(c)}
                 />
               ))}
             </div>
-            <input
-              type="range" min={1} max={30} value={penWidth}
-              onChange={(e) => setPen({ width: +e.target.value })}
-              style={{ width: 90 }}
-              title={`Brush size: ${penWidth}px`}
-            />
-            <span className="muted small" style={{ minWidth: 30 }}>{penWidth}px</span>
           </>
         )}
 
@@ -164,9 +137,11 @@ export default function BoardView() {
         <button onClick={() => addText('body')}>T Body</button>
         <button onClick={() => addText('quote')}>❝ Quote</button>
         <span className="tb-sep" />
-        <button onClick={() => addShape('rect')}>▭</button>
-        <button onClick={() => addShape('ellipse')}>◯</button>
-        <button onClick={() => addShape('line')}>─</button>
+        <button className={tool === 'rect' ? 'on' : ''} title="Rectangle (R) — drag to draw"
+          onClick={() => setTool('rect')}>▭</button>
+        <button className={tool === 'ellipse' ? 'on' : ''} title="Ellipse (O) — drag to draw"
+          onClick={() => setTool('ellipse')}>◯</button>
+
         <span className="tb-sep" />
         <button onClick={undo} title="Undo (Ctrl+Z)">↶</button>
         <button onClick={redo} title="Redo (Ctrl+Y)">↷</button>

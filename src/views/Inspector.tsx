@@ -43,12 +43,10 @@ export default function Inspector() {
             {[...els].reverse().map((e) => (
               <button key={e.id} className="layer" onClick={() => select([e.id])}>
                 <span className="layer-ico">
-                  {e.kind === 'vision' ? '🖼' : e.kind === 'text' ? 'T'
-                    : e.kind === 'draw' ? '✏️' : '◻'}
+                  {e.kind === 'vision' ? '🖼' : e.kind === 'text' ? 'T' : '◻'}
                 </span>
                 <span className="layer-name">
-                  {e.kind === 'vision' ? e.title : e.kind === 'text' ? e.text
-                    : e.kind === 'draw' ? 'drawing' : e.shape}
+                  {e.kind === 'vision' ? e.title : e.kind === 'text' ? e.text : e.shape}
                 </span>
                 {e.locked && <span>🔒</span>}
               </button>
@@ -77,8 +75,7 @@ export default function Inspector() {
 
       {one && (
         <>
-          <h4>{one.kind === 'vision' ? 'Vision' : one.kind === 'text' ? 'Text'
-            : one.kind === 'draw' ? 'Drawing' : 'Shape'}</h4>
+          <h4>{one.kind === 'vision' ? 'Vision' : one.kind === 'text' ? 'Text' : 'Shape'}</h4>
 
           {one.kind === 'vision' && (
             <>
@@ -185,26 +182,6 @@ export default function Inspector() {
                     onClick={() => updateEl(one.id, { dir: 'rtl' })}>RTL</button>
                 </div>
               </div>
-            </>
-          )}
-
-          {one.kind === 'draw' && (
-            <>
-              <div className="field">
-                <label>Ink colour</label>
-                <div className="swatches">
-                  {PALETTE.map((c) => (
-                    <button key={c} className={`sw${one.stroke === c ? ' on' : ''}`}
-                      style={{ background: c }} onClick={() => updateEl(one.id, { stroke: c })} />
-                  ))}
-                </div>
-              </div>
-              <div className="field">
-                <label>Thickness — {one.strokeWidth ?? 4}px</label>
-                <input type="range" min={1} max={30} value={one.strokeWidth ?? 4}
-                  onChange={(e) => updateEl(one.id, { strokeWidth: +e.target.value }, false)} />
-              </div>
-              <p className="muted small">{one.points?.length ?? 0} points</p>
             </>
           )}
 

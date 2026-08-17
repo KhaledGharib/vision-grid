@@ -53,14 +53,11 @@ interface Store extends AppState {
   panX: number;
   panY: number;
 
-  // ---- drawing ----
+  // ---- shape drawing ----
   tool: Tool;
-  penColor: string;
-  penWidth: number;
+  shapeColor: string;
   setTool: (t: Tool) => void;
-  setPen: (patch: { color?: string; width?: number }) => void;
-  /** Commit a freehand stroke. Points are in world coordinates. */
-  addStroke: (pts: { x: number; y: number }[]) => void;
+  setShapeColor: (c: string) => void;
   past: Snapshot[];
   future: Snapshot[];
 
@@ -90,7 +87,8 @@ interface Store extends AppState {
   // elements
   addVision: (file: File | null, title: string) => Promise<void>;
   addText: (preset?: 'heading' | 'body' | 'quote') => void;
-  addShape: (shape: ShapeKind) => void;
+  /** Create a shape from a dragged-out box (world coords). */
+  drawShape: (shape: ShapeKind, box: { x: number; y: number; w: number; h: number }) => void;
   updateEl: (id: string, patch: Partial<BoardElement>, history?: boolean) => void;
   updateMany: (patches: Record<string, Partial<BoardElement>>, history?: boolean) => void;
   deleteSelected: () => void;
@@ -185,8 +183,7 @@ export const useStore = create<Store>((set, get) => {
     panX: 0,
     panY: 0,
     tool: 'select',
-    penColor: '#f0b429',
-    penWidth: 4,
+    shapeColor: '#f0b429',
     past: [],
     future: [],
 
@@ -225,38 +222,7 @@ export const useStore = create<Store>((set, get) => {
     },
     clearSelection: () => set({ selection: [] }),
     setTool: (t) => set({ tool: t, selection: t === 'select' ? get().selection : [] }),
-    setPen: (p) => set((s) => ({
-      penColor: p.color ?? s.penColor,
-      penWidth: p.width ?? s.penWidth,
-    })),
-
-    addStroke: (pts) => {
-      if (pts.length < 2 || !get().activeBoard()) return;
-      const s = get();
-      const xs = pts.map((p) => p.x);
-      const ys = pts.map((p) => p.y);
-      const pad = s.penWidth;
-      const minX = Math.min(...xs) - pad;
-      const minY = Math.min(...ys) - pad;
-      const w = Math.max(1, Math.max(...xs) - Math.min(...xs) + pad * 2);
-      const h = Math.max(1, Math.max(...ys) - Math.min(...ys) + pad * 2);
-      // store normalised so the stroke scales cleanly when the box is resized
-      const norm = pts.map((p) => ({
-        x: (p.x - minX) / w,
-        y: (p.y - minY) / h,
-      }));
-      push();
-      const el: BoardElement = {
-        ...baseEl('draw'),
-        x: minX, y: minY, w, h,
-        points: norm,
-        stroke: s.penColor,
-        strokeWidth: s.penWidth,
-        smooth: true,
-      };
-      set((st) => ({ elements: [...st.elements, el] }));
-      persist();
-    },
+    setShapeColor: (c) => set({ shapeColor: c }),
 
     setZoom: (z) => set({ zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z)) }),
     setPan: (x, y) => set({ panX: x, panY: y }),
@@ -355,19 +321,21 @@ export const useStore = create<Store>((set, get) => {
       persist();
     },
 
-    addShape: (shape) => {
+    drawShape: (shape, box) => {
       if (!get().activeBoard()) return;
+      const s = get();
       push();
-      const sw = shape === 'line' ? 320 : 220;
-      const sh = shape === 'line' ? 4 : 180;
-      const spot = freeSpot(sw, sh);
       const el: BoardElement = {
         ...baseEl('shape'),
-        x: spot.x, y: spot.y, w: sw, h: sh,
-        shape, fill: shape === 'line' ? 'transparent' : '#f0b429',
-        stroke: '#f0b429', strokeWidth: shape === 'line' ? 4 : 0, radius: 10,
+        x: Math.round(box.x), y: Math.round(box.y),
+        w: Math.max(8, Math.round(box.w)), h: Math.max(8, Math.round(box.h)),
+        shape,
+        fill: s.shapeColor,
+        stroke: s.shapeColor,
+        strokeWidth: 0,
+        radius: 10,
       };
-      set((s) => ({ elements: [...s.elements, el], selection: [el.id] }));
+      set((st) => ({ elements: [...st.elements, el], selection: [el.id], tool: 'select' }));
       persist();
     },
 

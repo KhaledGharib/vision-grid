@@ -37,16 +37,16 @@ An **infinite canvas** (pan/zoom), not a fixed page.
 **Element types**
 - **Images** → these become **visions**, the only elements goals can attach to
 - **Text** → Heading / Body / Quote presets; double-click to edit inline
-- **Shapes** → rectangle, ellipse, line
-- **Drawings** → freehand pen strokes
+- **Shapes** → rectangle and ellipse
 
-**Tools** — `V` select · `P` pen · `E` eraser · `Esc` back to select
+**Shortcuts** — `R` rectangle · `O` ellipse · `Esc` cancel · `Delete` remove selected
 
-**Drawing.** The pen draws real freehand ink: hold and drag anywhere on the canvas.
-Strokes are smoothed through quadratic curves, stored as normalised points so they
-scale cleanly when resized, and rendered as SVG (never bitmaps). Pick colour and
-thickness from the toolbar while the pen is active, or restyle any stroke later from
-the inspector. The eraser removes whole elements on click.
+**Drawing shapes.** Pick the rectangle or ellipse tool, then **drag on the canvas** to
+draw it at the size you want — a live preview shows the dimensions while you drag.
+Hold **Shift** for a perfect square or circle. Pick the fill colour from the toolbar
+before drawing, or restyle later from the inspector. Selection is the default mode,
+and the app returns to it automatically once a shape is placed. Delete elements with
+the 🗑 button or the `Delete` key.
 
 **Arabic / RTL.** Text elements auto-detect Arabic, Hebrew and other RTL scripts and
 flip direction and alignment automatically. Override per element with Auto / LTR / RTL

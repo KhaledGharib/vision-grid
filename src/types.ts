@@ -3,11 +3,14 @@
 
 export type Visibility = 'private' | 'friends' | 'active-only';
 export type GoalStatus = 'active' | 'done' | 'dropped';
-export type ElementKind = 'vision' | 'text' | 'shape' | 'draw';
-export type ShapeKind = 'rect' | 'ellipse' | 'line';
+export type ElementKind = 'vision' | 'text' | 'shape';
+export type ShapeKind = 'rect' | 'ellipse';
 export type TextDir = 'auto' | 'ltr' | 'rtl';
 /** Active canvas tool. 'select' is the normal pointer. */
-export type Tool = 'select' | 'pen' | 'eraser';
+export type Tool = 'select' | 'rect' | 'ellipse';
+
+/** Tools that create a shape by dragging out its bounds. */
+export const SHAPE_TOOLS: Tool[] = ['rect', 'ellipse'];
 
 export interface User {
   id: string;

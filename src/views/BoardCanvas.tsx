@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 import type { BoardElement } from '../types';
-import { FONTS, isRtlText } from '../types';
+import { FONTS, isRtlText, SHAPE_TOOLS, type ShapeKind } from '../types';
 import { useImage } from '../hooks/useImage';
 import { bounds, HANDLES, resizeBox, snapBox, type Guide, type HandleId } from '../canvas';
 import { daysUntil } from '../dates';
@@ -114,49 +114,10 @@ function TextEl({ e, editing, onCommit }: { e: BoardElement; editing: boolean; o
   );
 }
 
-/** Catmull-Rom-ish smoothing: quadratic segments through midpoints. */
-export function strokePath(pts: { x: number; y: number }[], w: number, h: number) {
-  if (!pts.length) return '';
-  const P = pts.map((p) => ({ x: p.x * w, y: p.y * h }));
-  if (P.length === 1) return `M ${P[0].x} ${P[0].y} l 0.01 0`;
-  if (P.length === 2) return `M ${P[0].x} ${P[0].y} L ${P[1].x} ${P[1].y}`;
-  let d = `M ${P[0].x} ${P[0].y}`;
-  for (let i = 1; i < P.length - 1; i++) {
-    const mx = (P[i].x + P[i + 1].x) / 2;
-    const my = (P[i].y + P[i + 1].y) / 2;
-    d += ` Q ${P[i].x} ${P[i].y} ${mx} ${my}`;
-  }
-  const last = P[P.length - 1];
-  d += ` L ${last.x} ${last.y}`;
-  return d;
-}
-
-function DrawEl({ e }: { e: BoardElement }) {
-  const pts = e.points ?? [];
-  return (
-    <svg
-      width="100%" height="100%" viewBox={`0 0 ${e.w} ${e.h}`}
-      preserveAspectRatio="none" style={{ display: 'block', overflow: 'visible' }}
-    >
-      <path
-        d={strokePath(pts, e.w, e.h)}
-        fill="none"
-        stroke={e.stroke ?? '#f0b429'}
-        strokeWidth={e.strokeWidth ?? 4}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
-  );
-}
-
 function ShapeEl({ e }: { e: BoardElement }) {
   if (e.shape === 'ellipse')
     return <div style={{ width: '100%', height: '100%', borderRadius: '50%',
       background: e.fill, border: e.strokeWidth ? `${e.strokeWidth}px solid ${e.stroke}` : 'none' }} />;
-  if (e.shape === 'line')
-    return <div style={{ width: '100%', height: '100%', background: e.stroke }} />;
   return <div style={{ width: '100%', height: '100%', borderRadius: e.radius ?? 8,
     background: e.fill, border: e.strokeWidth ? `${e.strokeWidth}px solid ${e.stroke}` : 'none' }} />;
 }
@@ -186,18 +147,16 @@ export default function BoardCanvas() {
   const panBy = useStore((s) => s.panBy);
   const zoomAt = useStore((s) => s.zoomAt);
   const tool = useStore((s) => s.tool);
-  const penColor = useStore((s) => s.penColor);
-  const penWidth = useStore((s) => s.penWidth);
-  const addStroke = useStore((s) => s.addStroke);
-  const deleteSelected = useStore((s) => s.deleteSelected);
+  const drawShape = useStore((s) => s.drawShape);
 
   const [drag, setDrag] = useState<DragState>(null);
   const [guides, setGuides] = useState<Guide[]>([]);
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [editingText, setEditingText] = useState<string | null>(null);
   const [spaceDown, setSpaceDown] = useState(false);
-  const [ink, setInk] = useState<{ x: number; y: number }[] | null>(null);
-  const inkRef = useRef<{ x: number; y: number }[]>([]);
+  type Draft = { sx: number; sy: number; x: number; y: number; w: number; h: number };
+  const [shapeDraft, setShapeDraft] = useState<Draft | null>(null);
+  const draftRef = useRef<Draft | null>(null);
   const vpRef = useRef<HTMLDivElement>(null);
 
   const selEls = els.filter((e) => selection.includes(e.id));
@@ -246,17 +205,8 @@ export default function BoardCanvas() {
 
   const onElPointerDown = (ev: React.PointerEvent, el: BoardElement) => {
     if (editingText === el.id || spaceDown) return;
-
-    // eraser: click any element to remove it
-    if (tool === 'eraser') {
-      ev.stopPropagation();
-      if (el.locked) return;
-      select([el.id]);
-      setTimeout(() => deleteSelected(), 0);
-      return;
-    }
-    // pen draws over elements instead of grabbing them
-    if (tool === 'pen') return;
+    // shape tools draw over elements instead of grabbing them
+    if (SHAPE_TOOLS.includes(tool)) return;
 
     ev.stopPropagation();
     if (el.locked) return;
@@ -305,12 +255,13 @@ export default function BoardCanvas() {
     }
     if (ev.button !== 0) return;
 
-    // pen: start a freehand stroke
-    if (tool === 'pen') {
+    // shape tools: drag out the bounds
+    if (SHAPE_TOOLS.includes(tool)) {
       ev.preventDefault();
       const p = toWorld(ev.clientX, ev.clientY);
-      inkRef.current = [p];
-      setInk([p]);
+      const d0 = { sx: p.x, sy: p.y, x: p.x, y: p.y, w: 0, h: 0 };
+      draftRef.current = d0;
+      setShapeDraft(d0);
       return;
     }
     setEditingText(null);
@@ -319,21 +270,32 @@ export default function BoardCanvas() {
     setDrag({ mode: 'marquee', startX: p.x, startY: p.y });
   };
 
-  // freehand capture
+  // shape drag-to-draw
   useEffect(() => {
-    if (!ink) return;
+    if (!shapeDraft) return;
     const move = (ev: PointerEvent) => {
       const p = toWorld(ev.clientX, ev.clientY);
-      const last = inkRef.current[inkRef.current.length - 1];
-      // skip micro-moves so paths stay light
-      if (last && Math.hypot(p.x - last.x, p.y - last.y) < 1.5 / zoom) return;
-      inkRef.current = [...inkRef.current, p];
-      setInk(inkRef.current);
+      const d = draftRef.current;
+      if (!d) return;
+      let w = Math.abs(p.x - d.sx);
+      let h = Math.abs(p.y - d.sy);
+      // Shift = perfect square / circle
+      if (ev.shiftKey) { const m = Math.max(w, h); w = m; h = m; }
+      const x = p.x < d.sx ? d.sx - w : d.sx;
+      const y = p.y < d.sy ? d.sy - h : d.sy;
+      const next = { ...d, x, y, w, h };
+      draftRef.current = next;
+      setShapeDraft(next);
     };
     const up = () => {
-      if (inkRef.current.length > 1) addStroke(inkRef.current);
-      inkRef.current = [];
-      setInk(null);
+      // Read via ref, never inside a setState updater — StrictMode double-invokes
+      // updaters in dev, which would create the shape twice.
+      const d = draftRef.current;
+      if (d && d.w > 4 && d.h > 2) {
+        drawShape(tool as ShapeKind, { x: d.x, y: d.y, w: d.w, h: d.h });
+      }
+      draftRef.current = null;
+      setShapeDraft(null);
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
@@ -341,7 +303,7 @@ export default function BoardCanvas() {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
     };
-  }, [ink, zoom, panX, panY, addStroke]);
+  }, [shapeDraft, tool, zoom, panX, panY, drawShape]);
 
   useEffect(() => {
     if (!drag) return;
@@ -436,7 +398,7 @@ export default function BoardCanvas() {
     <div
       ref={vpRef}
       className={`canvas-viewport${spaceDown || panning ? ' panning' : ''}${
-        tool === 'pen' ? ' pen' : tool === 'eraser' ? ' eraser' : ''}`}
+        SHAPE_TOOLS.includes(tool) ? ' drawing-shape' : ''}`}
       onPointerDown={onViewportDown}
       style={{
         backgroundColor: board?.bg ?? '#0d0f14',
@@ -466,7 +428,6 @@ export default function BoardCanvas() {
             >
               {e.kind === 'vision' && <VisionEl e={e} />}
               {e.kind === 'shape' && <ShapeEl e={e} />}
-              {e.kind === 'draw' && <DrawEl e={e} />}
               {e.kind === 'text' && (
                 <TextEl
                   e={e}
@@ -514,15 +475,20 @@ export default function BoardCanvas() {
           ),
         )}
 
-        {/* live ink preview */}
-        {ink && ink.length > 1 && (
-          <svg className="ink-live" style={{ overflow: 'visible' }}>
-            <path
-              d={`M ${ink.map((p) => `${p.x} ${p.y}`).join(' L ')}`}
-              fill="none" stroke={penColor} strokeWidth={penWidth}
-              strokeLinecap="round" strokeLinejoin="round"
-            />
-          </svg>
+        {/* live shape preview */}
+        {shapeDraft && shapeDraft.w > 0 && (
+          <div
+            className="shape-draft"
+            style={{
+              left: shapeDraft.x, top: shapeDraft.y,
+              width: shapeDraft.w, height: shapeDraft.h,
+              borderRadius: tool === 'ellipse' ? '50%' : 6,
+            }}
+          >
+            <span className="shape-dim">
+              {Math.round(shapeDraft.w)} × {Math.round(shapeDraft.h)}
+            </span>
+          </div>
         )}
 
         {/* marquee */}
