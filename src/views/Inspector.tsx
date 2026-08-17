@@ -3,8 +3,10 @@ import { nanoid } from 'nanoid';
 import { useStore } from '../store';
 import { putImage } from '../storage';
 import { FONTS, PALETTE } from '../types';
+import { useT } from '../useT';
 
 export default function Inspector() {
+  const t = useT();
   const els = useStore((s) => s.boardElements)();
   const selection = useStore((s) => s.selection);
   const updateEl = useStore((s) => s.updateEl);
@@ -25,9 +27,9 @@ export default function Inspector() {
     <aside className="inspector">
       {sel.length === 0 && (
         <>
-          <h4>Board</h4>
+          <h4>{t('boardPanel')}</h4>
           <div className="field">
-            <label>Background</label>
+            <label>{t('background')}</label>
             <div className="swatches">
               {PALETTE.map((c) => (
                 <button key={c} className={`sw${board?.bg === c ? ' on' : ''}`}
@@ -58,7 +60,7 @@ export default function Inspector() {
 
       {sel.length > 1 && (
         <>
-          <h4>{sel.length} selected</h4>
+          <h4>{sel.length} {t('selectedCount')}</h4>
           <div className="field">
             <label>Align</label>
             <div className="btn-grid">
@@ -75,40 +77,40 @@ export default function Inspector() {
 
       {one && (
         <>
-          <h4>{one.kind === 'vision' ? 'Vision' : one.kind === 'text' ? 'Text' : 'Shape'}</h4>
+          <h4>{one.kind === 'vision' ? t('vision') : one.kind === 'text' ? t('text') : t('shape')}</h4>
 
           {one.kind === 'vision' && (
             <>
               <div className="field">
-                <label>Title</label>
+                <label>{t('title')}</label>
                 <input value={one.title ?? ''} onChange={(e) => updateEl(one.id, { title: e.target.value })} />
               </div>
               <div className="field">
-                <label>Why does this matter?</label>
+                <label>{t('whyMatters')}</label>
                 <textarea rows={3} value={one.why ?? ''}
                   placeholder="The reason you'll still care in November..."
                   onChange={(e) => updateEl(one.id, { why: e.target.value })} />
               </div>
               <div className="field">
-                <label>Target date</label>
+                <label>{t('targetDate')}</label>
                 <input type="date" value={one.targetDate ?? ''}
                   onChange={(e) => updateEl(one.id, { targetDate: e.target.value || null })} />
               </div>
               <div className="field">
-                <label>Image fit</label>
+                <label>{t('imageFit')}</label>
                 <div className="btn-row">
                   <button className={one.fit === 'cover' ? 'on' : ''}
-                    onClick={() => updateEl(one.id, { fit: 'cover' })}>Cover</button>
+                    onClick={() => updateEl(one.id, { fit: 'cover' })}>{t('cover')}</button>
                   <button className={one.fit === 'contain' ? 'on' : ''}
-                    onClick={() => updateEl(one.id, { fit: 'contain' })}>Contain</button>
+                    onClick={() => updateEl(one.id, { fit: 'contain' })}>{t('contain')}</button>
                 </div>
               </div>
               <div className="field">
-                <label>Corner radius — {one.radius ?? 12}px</label>
+                <label>{t('cornerRadius')} — {one.radius ?? 12}px</label>
                 <input type="range" min={0} max={80} value={one.radius ?? 12}
                   onChange={(e) => updateEl(one.id, { radius: +e.target.value }, false)} />
               </div>
-              <button onClick={() => fileRef.current?.click()}>Replace image…</button>
+              <button onClick={() => fileRef.current?.click()}>{t('replaceImage')}</button>
               <input ref={fileRef} type="file" accept="image/*" hidden
                 onChange={async (e) => {
                   const f = e.target.files?.[0];
@@ -123,17 +125,17 @@ export default function Inspector() {
           {one.kind === 'text' && (
             <>
               <div className="field">
-                <label>Text</label>
+                <label>{t('text')}</label>
                 <textarea rows={3} value={one.text ?? ''}
                   onChange={(e) => updateEl(one.id, { text: e.target.value })} />
               </div>
               <div className="field">
-                <label>Size — {one.fontSize}px</label>
+                <label>{t('size')} — {one.fontSize}px</label>
                 <input type="range" min={10} max={120} value={one.fontSize ?? 22}
                   onChange={(e) => updateEl(one.id, { fontSize: +e.target.value }, false)} />
               </div>
               <div className="field">
-                <label>Weight</label>
+                <label>{t('weight')}</label>
                 <div className="btn-row">
                   {[400, 600, 800].map((w) => (
                     <button key={w} className={one.fontWeight === w ? 'on' : ''}
@@ -153,7 +155,7 @@ export default function Inspector() {
                 </div>
               </div>
               <div className="field">
-                <label>Colour</label>
+                <label>{t('colour')}</label>
                 <div className="swatches">
                   {PALETTE.map((c) => (
                     <button key={c} className={`sw${one.color === c ? ' on' : ''}`}
@@ -162,7 +164,7 @@ export default function Inspector() {
                 </div>
               </div>
               <div className="field">
-                <label>Font</label>
+                <label>{t('font')}</label>
                 <div className="btn-row">
                   {FONTS.map((f) => (
                     <button key={f.id} className={(one.fontFamily ?? 'sans') === f.id ? 'on' : ''}
@@ -171,11 +173,11 @@ export default function Inspector() {
                 </div>
               </div>
               <div className="field">
-                <label>Direction — العربية</label>
+                <label>{t('direction')}</label>
                 <div className="btn-row">
                   <button className={(one.dir ?? 'auto') === 'auto' ? 'on' : ''}
-                    title="Detect Arabic automatically"
-                    onClick={() => updateEl(one.id, { dir: 'auto' })}>Auto</button>
+                    title={t('auto')}
+                    onClick={() => updateEl(one.id, { dir: 'auto' })}>{t('auto')}</button>
                   <button className={one.dir === 'ltr' ? 'on' : ''}
                     onClick={() => updateEl(one.id, { dir: 'ltr' })}>LTR</button>
                   <button className={one.dir === 'rtl' ? 'on' : ''}
@@ -188,7 +190,7 @@ export default function Inspector() {
           {one.kind === 'shape' && (
             <>
               <div className="field">
-                <label>Fill</label>
+                <label>{t('fill')}</label>
                 <div className="swatches">
                   {PALETTE.map((c) => (
                     <button key={c} className={`sw${one.fill === c ? ' on' : ''}`}
@@ -197,12 +199,12 @@ export default function Inspector() {
                 </div>
               </div>
               <div className="field">
-                <label>Border width — {one.strokeWidth ?? 0}px</label>
+                <label>{t('borderWidth')} — {one.strokeWidth ?? 0}px</label>
                 <input type="range" min={0} max={20} value={one.strokeWidth ?? 0}
                   onChange={(e) => updateEl(one.id, { strokeWidth: +e.target.value }, false)} />
               </div>
               <div className="field">
-                <label>Border colour</label>
+                <label>{t('border')}</label>
                 <div className="swatches">
                   {PALETTE.map((c) => (
                     <button key={c} className={`sw${one.stroke === c ? ' on' : ''}`}
@@ -215,17 +217,17 @@ export default function Inspector() {
 
           {/* shared */}
           <div className="field">
-            <label>Opacity — {Math.round((one.opacity ?? 1) * 100)}%</label>
+            <label>{t('opacity')} — {Math.round((one.opacity ?? 1) * 100)}%</label>
             <input type="range" min={10} max={100} value={(one.opacity ?? 1) * 100}
               onChange={(e) => updateEl(one.id, { opacity: +e.target.value / 100 }, false)} />
           </div>
           <div className="field">
-            <label>Rotation — {one.rotation}°</label>
+            <label>{t('rotation')} — {one.rotation}°</label>
             <input type="range" min={-180} max={180} value={one.rotation}
               onChange={(e) => updateEl(one.id, { rotation: +e.target.value }, false)} />
           </div>
           <div className="field">
-            <label>Arrange</label>
+            <label>{t('arrange')}</label>
             <div className="btn-grid four">
               <button onClick={() => bringToFront(one.id)} title="Bring to front">⤒</button>
               <button onClick={() => bringForward(one.id)} title="Forward">↑</button>

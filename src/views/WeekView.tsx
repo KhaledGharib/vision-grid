@@ -3,6 +3,7 @@ import { useStore } from '../store';
 import { MAX_WEEK_GOALS } from '../types';
 import { dayKey, weekKey } from '../dates';
 import { Coach, Example } from './Coach';
+import { useT } from '../useT';
 
 export default function WeekView() {
   const monthGoals = useStore((s) => s.currentMonthGoals)();
@@ -19,6 +20,7 @@ export default function WeekView() {
   const [title, setTitle] = useState('');
   const [mgId, setMgId] = useState('');
   const [taskDraft, setTaskDraft] = useState<Record<string, string>>({});
+  const t = useT();
 
   const full = weekGoals.length >= MAX_WEEK_GOALS;
 
@@ -33,52 +35,32 @@ export default function WeekView() {
     <div className="view">
       <div className="view-head">
         <h2>
-          This week · {weekKey()}{' '}
+          {t('thisWeek')} · {weekKey()}{' '}
           <span className={`cap${full ? ' full' : ''}`}>
-            {weekGoals.length}/{MAX_WEEK_GOALS} goals
+            {weekGoals.length}/{MAX_WEEK_GOALS} {t('goals')}
           </span>
         </h2>
-        <p>Pull one or two month goals into this week, then break them into day tasks.</p>
+        <p>{t('weekHeadHint')}</p>
       </div>
 
-      <Coach id="week" title="How to write a week goal">
-        <p>
-          A week goal is <b>one slice</b> of a month goal — the part you can realistically
-          finish in 7 days, around your actual life.
-        </p>
-        <p className="coach-rule">
-          Test it: could you finish this even in a bad week? If it needs everything to go
-          perfectly, cut it in half.
-        </p>
-        <Example
-          bad="Start running"
-          good="Run 3 times this week, 2km each"
-          why="A count and a distance. You'll know on Sunday if you did it."
-        />
-        <Example
-          bad="Make progress on checkout"
-          good="Stripe checkout works end to end in test mode"
-          why="Names the finish line, not the activity."
-        />
-        <p className="coach-foot">
-          Two maximum — and one is often the honest answer.
-        </p>
+      <Coach id="week" title={t('coachWeekTitle')}>
+        <p>{t('coachWeekBody')}</p>
+        <p className="coach-rule">{t('coachWeekRule')}</p>
+        <Example bad={t('exBadRun')} good={t('exGoodRun')} why={t('exWhyRun')} />
+        <Example bad={t('exBadCheckout')} good={t('exGoodCheckout')} why={t('exWhyCheckout')} />
+        <p className="coach-foot">{t('coachWeekFoot')}</p>
       </Coach>
 
       {monthGoals.length === 0 ? (
-        <div className="empty">
-          No month goals yet.
-          <br />
-          Go to <b>Month</b> and set up to three first.
-        </div>
+        <div className="empty">{t('noMonthGoals')}</div>
       ) : (
         <>
           {!full && (
             <div className="card">
               <div className="field">
-                <label>Which month goal are you advancing?</label>
+                <label>{t('whichMonthGoal')}</label>
                 <select value={mgId} onChange={(e) => setMgId(e.target.value)}>
-                  <option value="">— pick a month goal —</option>
+                  <option value="">{t('pickMonthGoal')}</option>
                   {monthGoals.map((g) => (
                     <option key={g.id} value={g.id}>
                       {g.title}
@@ -87,16 +69,16 @@ export default function WeekView() {
                 </select>
               </div>
               <div className="field">
-                <label>Week goal</label>
+                <label>{t('weekGoalLabel')}</label>
                 <input
                   value={title}
-                  placeholder="e.g. Run 3 times this week, 2km each"
+                  placeholder={t('weekGoalPlaceholder')}
                   onChange={(e) => setTitle(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && submit()}
                 />
               </div>
               <button className="primary" disabled={!mgId || !title.trim()} onClick={submit}>
-                Add week goal
+                {t('addWeekGoal')}
               </button>
             </div>
           )}
@@ -104,7 +86,7 @@ export default function WeekView() {
           {weekGoals.map((w) => {
             const mg = allMonthGoals.find((g) => g.id === w.monthGoalId);
             const v = allEls.find((x) => x.id === mg?.visionId);
-            const mine = tasks.filter((t) => t.weekGoalId === w.id);
+            const mine = tasks.filter((task) => task.weekGoalId === w.id);
             const draft = taskDraft[w.id] ?? '';
             const addIt = () => {
               if (addTask(w.id, draft, dayKey())) setTaskDraft({ ...taskDraft, [w.id]: '' });
@@ -119,24 +101,24 @@ export default function WeekView() {
                     </div>
                   </div>
                   <span className="pill">
-                    {mine.filter((t) => t.done).length}/{mine.length}
+                    {mine.filter((task) => task.done).length}/{mine.length}
                   </span>
                   <button
                     className="ghost"
-                    onClick={() => confirm('Delete this week goal and its tasks?') && deleteWeekGoal(w.id)}
+                    onClick={() => confirm(t('confirmDeleteWeek')) && deleteWeekGoal(w.id)}
                   >
                     ✕
                   </button>
                 </div>
 
-                {mine.map((t) => (
-                  <div className={`task${t.done ? ' done' : ''}`} key={t.id}>
-                    <button className={`chk${t.done ? ' on' : ''}`} onClick={() => toggleTask(t.id)}>
-                      {t.done ? '✓' : ''}
+                {mine.map((task) => (
+                  <div className={`task${task.done ? ' done' : ''}`} key={task.id}>
+                    <button className={`chk${task.done ? ' on' : ''}`} onClick={() => toggleTask(task.id)}>
+                      {task.done ? '✓' : ''}
                     </button>
-                    <span className="title">{t.title}</span>
-                    <span className="pill">{t.date}</span>
-                    <button className="ghost" onClick={() => deleteTask(t.id)}>
+                    <span className="title">{task.title}</span>
+                    <span className="pill">{task.date}</span>
+                    <button className="ghost" onClick={() => deleteTask(task.id)}>
                       ✕
                     </button>
                   </div>
@@ -145,12 +127,12 @@ export default function WeekView() {
                 <div className="row" style={{ marginTop: 10 }}>
                   <input
                     value={draft}
-                    placeholder="+ a task you could do today in one sitting"
+                    placeholder={t('taskPlaceholder')}
                     onChange={(e) => setTaskDraft({ ...taskDraft, [w.id]: e.target.value })}
                     onKeyDown={(e) => e.key === 'Enter' && addIt()}
                   />
                   <button disabled={!draft.trim()} onClick={addIt}>
-                    Add
+                    {t('add')}
                   </button>
                 </div>
               </div>
@@ -158,7 +140,7 @@ export default function WeekView() {
           })}
 
           {weekGoals.length === 0 && (
-            <div className="empty">Nothing pulled into this week yet.</div>
+            <div className="empty">{t('nothingThisWeek')}</div>
           )}
         </>
       )}

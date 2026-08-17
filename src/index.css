@@ -345,3 +345,46 @@ input[type=range] { padding: 0; }
 .el, .el * { -webkit-user-drag: none; }
 .el img { -webkit-user-drag: none; pointer-events: none; }
 .el-text[contenteditable='true'] { user-select: text; -webkit-user-select: text; }
+
+/* ================= language switch + RTL ================= */
+.lang-switch { display: flex; gap: 2px; background: var(--panel-2);
+  border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
+.lang-btn { padding: 4px 10px; font-size: 12px; border: none; background: transparent;
+  color: var(--muted); border-radius: 6px; }
+.lang-btn:hover { color: var(--text); background: rgba(255,255,255,.05); }
+.lang-btn.on { background: var(--accent); color: #1a1400; font-weight: 700; }
+
+/* Arabic UI: readable Arabic type everywhere in the chrome */
+html[lang='ar'] body,
+html[lang='ar'] button,
+html[lang='ar'] input,
+html[lang='ar'] select,
+html[lang='ar'] textarea {
+  font-family: 'Segoe UI', 'Noto Sans Arabic', 'Dubai', Tahoma, ui-sans-serif, system-ui, sans-serif;
+}
+
+/* RTL: mirror the parts that are physically anchored.
+   The canvas itself stays LTR — board coordinates must not flip. */
+html[dir='rtl'] .view,
+html[dir='rtl'] .card,
+html[dir='rtl'] .view-head,
+html[dir='rtl'] .coach,
+html[dir='rtl'] .guide { text-align: right; }
+
+html[dir='rtl'] .mit-card { flex-direction: row-reverse; }
+html[dir='rtl'] .task { flex-direction: row-reverse; }
+html[dir='rtl'] .guide-step { flex-direction: row-reverse; }
+html[dir='rtl'] .coach-head { flex-direction: row-reverse; }
+html[dir='rtl'] .coach-rule { border-left: none; border-right: 2px solid var(--accent-dim);
+  padding-left: 0; padding-right: 11px; }
+html[dir='rtl'] .ex-row { flex-direction: row-reverse; }
+html[dir='rtl'] .guide-x { right: auto; left: 14px; }
+html[dir='rtl'] .gs-tab { margin-left: 0; margin-right: 6px; }
+html[dir='rtl'] .chain-strip { flex-direction: row-reverse; }
+html[dir='rtl'] .attn-row { flex-direction: row-reverse; }
+
+/* the board canvas + its overlays stay LTR so geometry is unaffected */
+html[dir='rtl'] .canvas-viewport,
+html[dir='rtl'] .board-body,
+html[dir='rtl'] .minimap { direction: ltr; }
+html[dir='rtl'] .inspector { text-align: right; }

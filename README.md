@@ -75,6 +75,28 @@ font too.
 - **Week** — max 2 goals, each must select a month goal. Add day tasks inline.
 - **Today** — tasks with vision thumbnail + full thread. Star up to 3 MITs.
 
+## Languages — English & العربية
+
+The whole interface is bilingual. Toggle with the **English / العربية** switch in the
+top bar; the choice persists in `localStorage` under `vg:lang`.
+
+Switching to Arabic sets `<html lang="ar" dir="rtl">`, which:
+
+- translates every label, button, placeholder, coach panel and the first-run guide
+- mirrors the planning layout — text right-aligns, task rows and example boxes flip,
+  the coach's accent border moves to the right edge
+- formats dates with `Intl` in Arabic (`الاثنين، 17 أغسطس`), keeping Gregorian months
+  and Western digits so planning stays unambiguous
+- loads Arabic-capable fonts (Noto Sans Arabic / Dubai / Segoe UI)
+
+**The canvas deliberately stays LTR.** Board elements carry absolute x/y coordinates,
+so flipping the canvas would move everything on the board. Only the surrounding UI
+mirrors; the board itself is unaffected. Text *elements* on the board still auto-detect
+Arabic independently of the UI language.
+
+Adding a third language means adding one entry per key in `src/i18n.ts` — no component
+changes needed.
+
 ## Guidance
 
 The hardest part of this system is knowing how to *phrase* a goal at each level, so

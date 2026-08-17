@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from './store';
+import { useT } from './useT';
+import { LANGS } from './i18n';
 import { exportState } from './storage';
 import BoardView from './views/BoardView';
 import MonthView from './views/MonthView';
@@ -18,34 +20,47 @@ export default function App() {
   const state = useStore();
 
   const active = boards.find((b) => b.isActive);
+  const t = useT();
+  const lang = useStore((s) => s.lang);
+  const setLang = useStore((s) => s.setLang);
+
+  // keep <html lang/dir> in sync on first paint and on change
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  }, [lang]);
+
+  const tabLabel: Record<Tab, ReturnType<typeof t>> = {
+    board: t('tabBoard'), month: t('tabMonth'), week: t('tabWeek'), today: t('tabToday'),
+  };
 
   return (
     <div className="app">
       <div className="topbar">
-        <span className="logo">◈ Vision Grid</span>
+        <span className="logo">◈ {t('appName')}</span>
 
         <div className="tabs">
-          {(['board', 'month', 'week', 'today'] as Tab[]).map((t) => (
+          {(['board', 'month', 'week', 'today'] as Tab[]).map((id) => (
             <button
-              key={t}
-              className={`tab${tab === t ? ' active' : ''}`}
-              onClick={() => setTab(t)}
+              key={id}
+              className={`tab${tab === id ? ' active' : ''}`}
+              onClick={() => setTab(id)}
             >
-              {t[0].toUpperCase() + t.slice(1)}
+              {tabLabel[id]}
             </button>
           ))}
         </div>
 
         <div className="spacer" />
 
-        <span className="chain-hint">Vision → Month → Week → Day</span>
+        <span className="chain-hint">{t('chainHint')}</span>
 
         <div className="board-chip">
           <select
             value={active?.id ?? ''}
             onChange={(e) => setActiveBoard(e.target.value)}
             style={{ width: 150 }}
-            title="Active board — only this board's goals can get tasks"
+            title={t('activeBoardTitle')}
           >
             {boards.map((b) => (
               <option key={b.id} value={b.id}>
@@ -55,9 +70,9 @@ export default function App() {
           </select>
           <button
             className="ghost"
-            title="New board"
+            title={t('newBoard')}
             onClick={() => {
-              const n = prompt('Board name (e.g. Health, Career, Money)');
+              const n = prompt(t('newBoardPrompt'));
               if (n?.trim()) addBoard(n.trim());
             }}
           >
@@ -65,9 +80,21 @@ export default function App() {
           </button>
         </div>
 
+        <div className="lang-switch" title={t('language')}>
+          {LANGS.map((l) => (
+            <button
+              key={l.id}
+              className={`lang-btn${lang === l.id ? ' on' : ''}`}
+              onClick={() => setLang(l.id)}
+            >
+              {l.native}
+            </button>
+          ))}
+        </div>
+
         <button
           className="ghost help-btn"
-          title="How this works"
+          title={t('howItWorks')}
           onClick={() => setShowGuide(true)}
         >
           ?
@@ -75,7 +102,7 @@ export default function App() {
 
         <button
           className="ghost"
-          title="Export all data as JSON"
+          title={t('exportJson')}
           onClick={() =>
             exportState({
               version: state.version,

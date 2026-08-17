@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 import type { AppState, Board, BoardElement, MonthGoal, ShapeKind, Task, Tool, WeekGoal } from './types';
 import { MAX_MITS, MAX_MONTH_GOALS, MAX_WEEK_GOALS, MAX_ZOOM, MIN_ZOOM, SPAWN_H, SPAWN_W, STARVE_AFTER_DAYS } from './types';
 import { dayKey, monthKey, weekKey } from './dates';
+import type { Lang } from './i18n';
 import { loadState, saveState, putImage, deleteImage } from './storage';
 
 const now = () => new Date().toISOString();
@@ -52,6 +53,10 @@ interface Store extends AppState {
   zoom: number;
   panX: number;
   panY: number;
+
+  // ---- language ----
+  lang: Lang;
+  setLang: (l: Lang) => void;
 
   // ---- shape drawing ----
   tool: Tool;
@@ -182,6 +187,7 @@ export const useStore = create<Store>((set, get) => {
     zoom: 1,
     panX: 0,
     panY: 0,
+    lang: (localStorage.getItem('vg:lang') as Lang) || 'en',
     tool: 'select',
     shapeColor: '#f0b429',
     past: [],
@@ -222,6 +228,12 @@ export const useStore = create<Store>((set, get) => {
     },
     clearSelection: () => set({ selection: [] }),
     setTool: (t) => set({ tool: t, selection: t === 'select' ? get().selection : [] }),
+    setLang: (l) => {
+      localStorage.setItem('vg:lang', l);
+      document.documentElement.lang = l;
+      document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+      set({ lang: l });
+    },
     setShapeColor: (c) => set({ shapeColor: c }),
 
     setZoom: (z) => set({ zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z)) }),

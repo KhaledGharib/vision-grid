@@ -25,13 +25,21 @@ export function weekKey(d: Date = new Date()): string {
   return `${isoYear}-W${String(week).padStart(2, '0')}`;
 }
 
-export function monthLabel(key: string): string {
-  const [y, m] = key.split('-').map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+/** Arabic uses Western digits + Gregorian months here — clearer for planning. */
+function locale(lang?: string) {
+  return lang === 'ar' ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-GB';
 }
 
-export function todayLabel(): string {
-  return new Date().toLocaleDateString(undefined, {
+export function monthLabel(key: string, lang?: string): string {
+  const [y, m] = key.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString(locale(lang), {
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+export function todayLabel(lang?: string): string {
+  return new Date().toLocaleDateString(locale(lang), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

@@ -6,8 +6,10 @@ import Minimap from './Minimap';
 import { exportBoardPng } from '../export';
 import { bounds } from '../canvas';
 import { PALETTE, SHAPE_TOOLS } from '../types';
+import { useT } from '../useT';
 
 export default function BoardView() {
+  const t = useT();
   const addVision = useStore((s) => s.addVision);
   const addText = useStore((s) => s.addText);
   const deleteSelected = useStore((s) => s.deleteSelected);
@@ -131,37 +133,37 @@ export default function BoardView() {
         )}
 
         <span className="tb-sep" />
-        <button className="primary" onClick={() => fileRef.current?.click()}>🖼 Image</button>
+        <button className="primary" onClick={() => fileRef.current?.click()}>🖼 {t('image')}</button>
         <span className="tb-sep" />
-        <button onClick={() => addText('heading')}>T Heading</button>
-        <button onClick={() => addText('body')}>T Body</button>
-        <button onClick={() => addText('quote')}>❝ Quote</button>
+        <button onClick={() => addText('heading')}>T {t('heading')}</button>
+        <button onClick={() => addText('body')}>T {t('body')}</button>
+        <button onClick={() => addText('quote')}>❝ {t('quote')}</button>
         <span className="tb-sep" />
-        <button className={tool === 'rect' ? 'on' : ''} title="Rectangle (R) — drag to draw"
+        <button className={tool === 'rect' ? 'on' : ''} title={t('rectTool')}
           onClick={() => setTool('rect')}>▭</button>
-        <button className={tool === 'ellipse' ? 'on' : ''} title="Ellipse (O) — drag to draw"
+        <button className={tool === 'ellipse' ? 'on' : ''} title={t('ellipseTool')}
           onClick={() => setTool('ellipse')}>◯</button>
 
         <span className="tb-sep" />
         <button onClick={undo} title="Undo (Ctrl+Z)">↶</button>
         <button onClick={redo} title="Redo (Ctrl+Y)">↷</button>
         <button onClick={duplicateSelected} disabled={!selection.length} title="Duplicate (Ctrl+D)">⧉</button>
-        <button onClick={deleteSelected} disabled={!selection.length} title="Delete">🗑</button>
+        <button onClick={deleteSelected} disabled={!selection.length} title={t('deleteEl')}>🗑</button>
 
         <span className="spacer" />
 
         <div className="zoomer">
-          <button onClick={() => zoomCenter(1 / 1.2)} title="Zoom out">−</button>
+          <button onClick={() => zoomCenter(1 / 1.2)} title={t('zoomOut')}>−</button>
           <button className="zoom-val" onClick={() => zoomCenter(1 / zoom)} title="Reset to 100%">
             {Math.round(zoom * 100)}%
           </button>
-          <button onClick={() => zoomCenter(1.2)} title="Zoom in">+</button>
-          <button onClick={() => fitToScreen(false)} title="Zoom to fit all (Shift+1)">⤢</button>
+          <button onClick={() => zoomCenter(1.2)} title={t('zoomIn')}>+</button>
+          <button onClick={() => fitToScreen(false)} title={t('fitAll')}>⤢</button>
         </div>
         <button disabled={busy} onClick={async () => {
           setBusy(true);
           try { await exportBoardPng(); } finally { setBusy(false); }
-        }}>{busy ? 'Exporting…' : '⭳ PNG'}</button>
+        }}>{busy ? '…' : `⭳ ${t('exportPng')}`}</button>
 
         <input ref={fileRef} type="file" accept="image/*" multiple hidden
           onChange={(e) => void onFiles(e.target.files)} />

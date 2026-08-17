@@ -3,35 +3,45 @@ import { MAX_MITS, type Task } from '../types';
 import { todayLabel } from '../dates';
 import { useImage } from '../hooks/useImage';
 import { Coach, Example } from './Coach';
+import { useT } from '../useT';
 
-function TaskRow({ t }: { t: Task }) {
+function TaskRow({ task }: { task: Task }) {
   const toggleTask = useStore((s) => s.toggleTask);
   const toggleMit = useStore((s) => s.toggleMit);
-  const vision = useStore((s) => s.visionForTask)(t);
+  const vision = useStore((s) => s.visionForTask)(task);
   const weekGoals = useStore((s) => s.weekGoals);
   const url = useImage(vision?.imageId);
-  const wg = weekGoals.find((w) => w.id === t.weekGoalId);
+  const wg = weekGoals.find((w) => w.id === task.weekGoalId);
+  const t = useT();
 
   return (
-    <div className={`card mit-card${t.done ? ' done' : ''}`} style={t.isMit ? {} : { borderLeftColor: 'transparent' }}>
+    <div
+      className={`card mit-card${task.done ? ' done' : ''}`}
+      style={task.isMit ? {} : { borderLeftColor: 'transparent' }}
+    >
       {url ? (
         <img className="mit-thumb" src={url} alt="" />
       ) : (
         <div className="mit-thumb ph">🎯</div>
       )}
-      <button className={`chk${t.done ? ' on' : ''}`} onClick={() => toggleTask(t.id)}>
-        {t.done ? '✓' : ''}
+      <button className={`chk${task.done ? ' on' : ''}`} onClick={() => toggleTask(task.id)}>
+        {task.done ? '✓' : ''}
       </button>
       <div style={{ flex: 1 }}>
-        <div style={{ textDecoration: t.done ? 'line-through' : 'none', color: t.done ? 'var(--muted)' : undefined }}>
-          {t.title}
+        <div
+          style={{
+            textDecoration: task.done ? 'line-through' : 'none',
+            color: task.done ? 'var(--muted)' : undefined,
+          }}
+        >
+          {task.title}
         </div>
         <div className="thread">
           {wg?.title} → <b>{vision?.title ?? '—'}</b>
         </div>
       </div>
-      <button className="star" title="Mark as one of today's 3 MITs" onClick={() => toggleMit(t.id)}>
-        {t.isMit ? '⭐' : '☆'}
+      <button className="star" title={t('markMit')} onClick={() => toggleMit(task.id)}>
+        {task.isMit ? '⭐' : '☆'}
       </button>
     </div>
   );
@@ -39,70 +49,55 @@ function TaskRow({ t }: { t: Task }) {
 
 export default function TodayView() {
   const tasks = useStore((s) => s.todayTasks)();
-  const mits = tasks.filter((t) => t.isMit);
-  const rest = tasks.filter((t) => !t.isMit);
-  const doneCount = tasks.filter((t) => t.done).length;
+  const t = useT();
+  const mits = tasks.filter((x) => x.isMit);
+  const rest = tasks.filter((x) => !x.isMit);
+  const doneCount = tasks.filter((x) => x.done).length;
 
   return (
     <div className="view">
       <div className="view-head">
-        <h2>{todayLabel()}</h2>
+        <h2>{todayLabel(t.lang)}</h2>
         <p>
           {tasks.length === 0
-            ? 'Nothing scheduled. Add tasks under a week goal.'
-            : `${doneCount}/${tasks.length} done · star up to ${MAX_MITS} as today's most important.`}
+            ? t('nothingScheduled')
+            : `${doneCount}/${tasks.length} ${t('done')} · ${t('starHint')}`}
         </p>
       </div>
 
-      <Coach id="today" title="How to pick today's tasks">
-        <p>
-          A task is <b>one concrete action</b> you could sit down and finish in a single
-          sitting — usually 20–60 minutes. If it needs several sessions, it's still a goal.
-        </p>
-        <p className="coach-rule">
-          Test it: do you know exactly what to do first? If you'd have to think about
-          "how do I even start", break it down further.
-        </p>
-        <Example
-          bad="Sort out finances"
-          good="Cancel the 3 subscriptions I don't use"
-          why="You can start this in 10 seconds. The other one you'd avoid all week."
-        />
-        <Example
-          bad="Work on Stripe"
-          good="Add the webhook endpoint and test one payment"
-          why="Specific enough that 'done' is obvious."
-        />
-        <p className="coach-foot">
-          Star up to 3 as your MITs. If you only did those, the day counts.
-        </p>
+      <Coach id="today" title={t('coachTodayTitle')}>
+        <p>{t('coachTodayBody')}</p>
+        <p className="coach-rule">{t('coachTodayRule')}</p>
+        <Example bad={t('exBadFinance')} good={t('exGoodFinance')} why={t('exWhyFinance')} />
+        <Example bad={t('exBadStripe')} good={t('exGoodStripe')} why={t('exWhyStripe')} />
+        <p className="coach-foot">{t('coachTodayFoot')}</p>
       </Coach>
 
       {tasks.length === 0 ? (
         <div className="empty">
-          No tasks today.
+          {t('todayEmpty')}
           <br />
-          Every task lives under a week goal — go to <b>Week</b> to add one.
+          {t('todayEmptyHint')}
         </div>
       ) : (
         <>
           {mits.length > 0 && (
             <>
               <div className="muted" style={{ margin: '0 0 8px' }}>
-                ⭐ Most important ({mits.length}/{MAX_MITS})
+                ⭐ {t('mostImportant')} ({mits.length}/{MAX_MITS})
               </div>
-              {mits.map((t) => (
-                <TaskRow key={t.id} t={t} />
+              {mits.map((x) => (
+                <TaskRow key={x.id} task={x} />
               ))}
             </>
           )}
           {rest.length > 0 && (
             <>
               <div className="muted" style={{ margin: '20px 0 8px' }}>
-                Everything else
+                {t('everythingElse')}
               </div>
-              {rest.map((t) => (
-                <TaskRow key={t.id} t={t} />
+              {rest.map((x) => (
+                <TaskRow key={x.id} task={x} />
               ))}
             </>
           )}
