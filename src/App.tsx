@@ -12,6 +12,10 @@ import Ask, { type AskState } from './views/Ask';
 import Account from './views/Account';
 import CircleView from './views/CircleView';
 import ArchiveView from './views/ArchiveView';
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from '@/components/ui/select';
+import { DirectionProvider } from '@radix-ui/react-direction';
 import { useSync } from './useSync';
 import { cloudEnabled } from './cloud';
 
@@ -61,6 +65,7 @@ export default function App() {
   const signedIn = syncStatus === 'synced' || syncStatus === 'syncing';
 
   return (
+    <DirectionProvider dir={lang === 'ar' ? 'rtl' : 'ltr'}>
     <div className="app">
       <div className="topbar">
         <span className="logo">◈ {t('appName')}</span>
@@ -82,18 +87,16 @@ export default function App() {
         <span className="chain-hint">{t('chainHint')}</span>
 
         <div className="board-chip">
-          <select
-            value={active?.id ?? ''}
-            onChange={(e) => setActiveBoard(e.target.value)}
-            style={{ width: 150 }}
-            title={t('activeBoardTitle')}
-          >
-            {boards.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
+          <Select value={active?.id ?? ''} onValueChange={setActiveBoard}>
+            <SelectTrigger className="w-[150px]" title={t('activeBoardTitle')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {boards.map((b) => (
+                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <button
             className="ghost"
             title={t('renameBoard')}
@@ -144,18 +147,16 @@ export default function App() {
           </button>
         )}
 
-        <select
-          className="lang-select"
-          title={t('language')}
-          value={lang}
-          onChange={(e) => setLang(e.target.value as Lang)}
-        >
-          {LANGS.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.flag} {l.native}
-            </option>
-          ))}
-        </select>
+        <Select value={lang} onValueChange={(v) => setLang(v as Lang)}>
+          <SelectTrigger className="w-[132px]" title={t('language')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {LANGS.map((l) => (
+              <SelectItem key={l.id} value={l.id}>{l.flag} {l.native}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <button
           className="ghost help-btn"
@@ -206,5 +207,6 @@ export default function App() {
         />
       )}
     </div>
+    </DirectionProvider>
   );
 }

@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Check, Plus, Target, Undo2, X } from 'lucide-react';
+import { Check, ChevronRight, Plus, Target, Undo2, X } from 'lucide-react';
 
 /** The vision's picture next to its goal, so the link is visible not textual. */
 function GoalThumb({ el }: { el?: BoardElement }) {
@@ -174,8 +174,9 @@ export default function MonthView() {
           {goals.length === 0 && <div className="empty">{t('noGoalsThisMonth')}</div>}
 
           {doneGoals.length > 0 && (
-            <details className="mt-5" open>
-              <summary className="cursor-pointer py-1.5 text-[13px] text-[#34d399]">
+            <details className="group mt-5" open>
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-[10px] border border-[#262c38] bg-[#151922] px-3 py-2 text-[13px] text-[#34d399] transition-colors hover:border-[#39424f] [&::-webkit-details-marker]:hidden">
+                <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90 rtl:rotate-180 rtl:group-open:rotate-90" />
                 ✓ {t('finishedThisMonth')} ({doneGoals.length})
               </summary>
               {doneGoals.map((g) => {

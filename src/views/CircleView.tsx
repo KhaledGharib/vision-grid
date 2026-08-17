@@ -9,6 +9,13 @@ import { useT } from '../useT';
 import Ask, { type AskState } from './Ask';
 import FriendBoard from './FriendBoard';
 import Avatar from './Avatar';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { Check, ChevronRight, Copy, Handshake, Plus, X } from 'lucide-react';
 
 /** Big progress ring — the friend's day, as the hero stat. */
 function DayRing({ done, total, size = 74 }: { done: number; total: number; size?: number }) {
@@ -17,12 +24,12 @@ function DayRing({ done, total, size = 74 }: { done: number; total: number; size
   const c = 2 * Math.PI * r;
   const full = pct >= 100;
   return (
-    <svg className="day-ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
       <circle cx={size / 2} cy={size / 2} r={r} fill="none"
         stroke="rgba(255,255,255,.09)" strokeWidth="6" />
       <circle
         cx={size / 2} cy={size / 2} r={r} fill="none"
-        stroke={full ? 'var(--green)' : 'var(--accent)'}
+        stroke={full ? '#34d399' : '#f0b429'}
         strokeWidth="6" strokeLinecap="round"
         strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(1, pct / 100))}
         transform={`rotate(-90 ${size / 2} ${size / 2})`}
@@ -30,10 +37,10 @@ function DayRing({ done, total, size = 74 }: { done: number; total: number; size
       />
       <text x={size / 2} y={size / 2 - 3} textAnchor="middle" dominantBaseline="central"
         fill="#fff" fontSize={size * 0.27} fontWeight="700">
-        {done}<tspan fill="var(--muted)" fontSize={size * 0.19}>/{total || 0}</tspan>
+        {done}<tspan fill="#8b93a4" fontSize={size * 0.19}>/{total || 0}</tspan>
       </text>
       <text x={size / 2} y={size / 2 + 14} textAnchor="middle" dominantBaseline="central"
-        fill={full ? 'var(--green)' : 'var(--muted)'} fontSize={size * 0.14} fontWeight="600">
+        fill={full ? '#34d399' : '#8b93a4'} fontSize={size * 0.14} fontWeight="600">
         {pct}%
       </text>
     </svg>
@@ -122,33 +129,42 @@ export default function CircleView({ signedIn }: { signedIn: boolean }) {
   const locale = t.lang === 'ar' ? 'ar' : 'en-GB';
 
   return (
-    <div className="view together">
+    <div className="view">
       <Ask state={ask} onClose={() => setAsk(null)} />
 
-      <div className="view-head">
+      <div className="view-head mb-[18px]">
         <h2>{t('circle')}</h2>
         <p>{t('circleBlurb')}</p>
       </div>
 
-      {err && <div className="card ask-err">{err}</div>}
+      {err && <div className="mb-3 text-[12.5px] text-[#f87171]">{err}</div>}
 
       {/* ---------- nudges: loud when unread ---------- */}
       {unread.length > 0 && (
-        <div className="nudge-stack">
+        <div className="mb-[22px] flex flex-col gap-2">
           {unread.map((n) => (
-            <div className="nudge-hero" key={n.id}>
-              <div className="nudge-wave">👋</div>
+            <div
+              key={n.id}
+              className="flex items-center gap-3 rounded-[12px] border border-[#7a5c14] bg-gradient-to-r from-[#f0b429]/[.13] to-[#f0b429]/[.03] px-[15px] py-[13px]"
+            >
+              <div className="animate-[wave_2.4s_ease-in-out_infinite] text-[22px]">👋</div>
               <Avatar emoji={n.from_emoji} color={n.from_color} name={n.from_name} size={40} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="nudge-from">
-                  {n.from_name ?? t('unnamedFriend')} · <span>{n.task_title}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[14.5px] font-semibold">
+                  {n.from_name ?? t('unnamedFriend')} ·{' '}
+                  <span className="font-normal text-[#8b93a4]">{n.task_title}</span>
                 </div>
-                {n.message && <div className="nudge-msg">“{n.message}”</div>}
-                <div className="muted small">{new Date(n.created_at).toLocaleString(locale)}</div>
+                {n.message && <div className="my-0.5 text-[13.5px] italic">“{n.message}”</div>}
+                <div className="text-[12px] text-[#8b93a4]">
+                  {new Date(n.created_at).toLocaleString(locale)}
+                </div>
               </div>
-              <button className="primary" onClick={async () => { await markNudgeRead(n.id); void refresh(); }}>
+              <Button
+                variant="primary"
+                onClick={async () => { await markNudgeRead(n.id); void refresh(); }}
+              >
                 {t('markRead')}
-              </button>
+              </Button>
             </div>
           ))}
         </div>
@@ -156,35 +172,48 @@ export default function CircleView({ signedIn }: { signedIn: boolean }) {
 
       {/* ---------- the people: the hero of this screen ---------- */}
       {friends.length === 0 ? (
-        <div className="together-empty">
-          <div className="te-emoji">🤝</div>
-          <h3>{t('noFriendsTitle')}</h3>
-          <p>{t('noFriendsYet')}</p>
-          <button className="primary big" disabled={busy} onClick={showCode}>
+        <div className="rounded-2xl border border-dashed border-[#262c38] px-6 py-[52px] text-center">
+          <div className="mb-3 flex justify-center">
+            <Handshake className="h-11 w-11 text-[#8b93a4]" />
+          </div>
+          <h3 className="mb-1.5 text-[18px]">{t('noFriendsTitle')}</h3>
+          <p className="mx-auto mb-5 max-w-[380px] text-[13.5px] text-[#8b93a4]">
+            {t('noFriendsYet')}
+          </p>
+          <Button variant="primary" size="lg" disabled={busy} onClick={showCode}>
             {t('showMyCode')}
-          </button>
-          <button className="ghost" onClick={() => setShowInvite(true)}>{t('haveACode')}</button>
+          </Button>
+          <Button variant="ghost" className="ms-2" onClick={() => setShowInvite(true)}>
+            {t('haveACode')}
+          </Button>
         </div>
       ) : (
         <>
-          <div className="friend-grid">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] items-start gap-3.5">
             {friends.map((f) => {
               const quiet = f.updated_at
                 ? Math.floor((Date.now() - new Date(f.updated_at).getTime()) / 86400000)
                 : null;
               const isQuiet = quiet !== null && quiet >= 3;
               const perfect = f.tasks_today > 0 && f.done_today >= f.tasks_today;
+              const idle = f.tasks_today === 0;
               return (
                 <div
-                  className={`friend-card${isQuiet ? ' quiet' : ''}${perfect ? ' perfect' : ''}${f.tasks_today === 0 ? ' idle' : ''}`}
                   key={f.friend_id}
-                  onClick={() => setViewing(f)}
                   role="button"
                   tabIndex={0}
+                  onClick={() => setViewing(f)}
                   onKeyDown={(e) => e.key === 'Enter' && setViewing(f)}
+                  className={cn(
+                    'group relative flex min-h-[196px] cursor-pointer flex-col rounded-[14px] border p-4',
+                    'bg-[#151922] transition-all hover:-translate-y-0.5 hover:bg-[#1b2029]',
+                    perfect ? 'border-[#34d399]/40'
+                      : isQuiet ? 'border-[#f87171]/30'
+                      : 'border-[#262c38] hover:border-[#7a5c14]',
+                  )}
                 >
                   <button
-                    className="fc-x"
+                    className="absolute end-2 top-2 z-[2] grid h-6 w-6 place-items-center rounded-full text-[#8b93a4] opacity-0 transition hover:bg-[#f87171]/[.12] hover:text-[#f87171] group-hover:opacity-100"
                     title={t('unfriend')}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -194,56 +223,89 @@ export default function CircleView({ signedIn }: { signedIn: boolean }) {
                         onOk: async () => { await unfriend(f.friend_id); void refresh(); },
                       });
                     }}
-                  >✕</button>
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
 
-                  <div className="fc-top">
+                  <div className="mb-3 flex items-center justify-between">
                     <Avatar emoji={f.avatar_emoji} color={f.avatar_color}
                             name={f.display_name} size={52} />
-                    <DayRing done={f.done_today} total={f.tasks_today} />
+                    <div className={cn(idle && 'opacity-55')}>
+                      <DayRing done={f.done_today} total={f.tasks_today} />
+                    </div>
                   </div>
 
-                  <div className="fc-name">{f.display_name ?? t('unnamedFriend')}</div>
-                  <div className={`fc-status${f.tasks_today === 0 ? ' fc-idle' : ''}`}>
+                  <div className="mb-1 truncate text-[16px] font-semibold">
+                    {f.display_name ?? t('unnamedFriend')}
+                  </div>
+                  <div className="text-[12.5px] text-[#8b93a4]">
                     {f.tasks_today > 0
                       ? (perfect ? '🔥 ' + t('perfectDay') : `${f.done_today}/${f.tasks_today} ${t('doneToday')}`)
                       : t('nothingPlannedToday')}
                   </div>
 
-                  <div className="fc-foot">
-                    {isQuiet && <div className="fc-quiet">💤 {quiet}{t('daysQuiet')}</div>}
-                    {!isQuiet && f.tasks_today === 0 && (
-                      <div className="fc-invite">{t('nudgeThemToStart')}</div>
+                  <div className="mt-auto">
+                    {isQuiet && (
+                      <div className="mt-2 inline-block rounded-full bg-[#f87171]/10 px-2.5 py-[3px] text-[11.5px] text-[#f87171]">
+                        💤 {quiet}{t('daysQuiet')}
+                      </div>
+                    )}
+                    {!isQuiet && idle && (
+                      <div className="mt-2 inline-block rounded-full bg-[#f0b429]/10 px-2.5 py-[3px] text-[11.5px] text-[#f0b429]">
+                        {t('nudgeThemToStart')}
+                      </div>
                     )}
                     {!isQuiet && perfect && (
-                      <div className="fc-streak">✓ {t('allClear')}</div>
+                      <div className="mt-2 inline-block rounded-full bg-[#34d399]/[.12] px-2.5 py-[3px] text-[11.5px] text-[#34d399]">
+                        ✓ {t('allClear')}
+                      </div>
                     )}
-                    <div className="fc-cta">{t('viewBoard')} ›</div>
+                    <div className="mt-3 text-[12.5px] text-[#f0b429] opacity-0 transition-opacity group-hover:opacity-100">
+                      {t('viewBoard')} ›
+                    </div>
                   </div>
                 </div>
               );
             })}
 
             {/* invite slot sits inside the grid, quiet and secondary */}
-            <button className="friend-card add-slot" onClick={() => setShowInvite(true)}>
-              <div className="as-plus">+</div>
-              <div className="fc-name">{t('addAFriend')}</div>
-              <div className="fc-status">{t('addAFriendHint')}</div>
+            <button
+              className="flex min-h-[196px] flex-col items-center justify-center gap-1 rounded-[14px] border border-dashed border-[#262c38] bg-transparent p-4 text-center text-[#8b93a4] transition-colors hover:border-[#7a5c14] hover:text-[#f0b429]"
+              onClick={() => setShowInvite(true)}
+            >
+              <Plus className="mb-1 h-7 w-7" />
+              <div className="text-[16px] font-semibold">{t('addAFriend')}</div>
+              <div className="text-[12.5px]">{t('addAFriendHint')}</div>
             </button>
           </div>
 
           {nudges.length > unread.length && (
-            <details className="past-nudges">
-              <summary>{t('earlierNudges')} ({nudges.length - unread.length})</summary>
+            <details className="group mt-[22px] max-w-[560px]">
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-[10px] border border-[#262c38] bg-[#151922] px-3 py-2 text-[13px] text-[#8b93a4] transition-colors hover:border-[#39424f] hover:text-[#e6e9ef] [&::-webkit-details-marker]:hidden">
+                <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90 rtl:rotate-180 rtl:group-open:rotate-90" />
+                {t('earlierNudges')} ({nudges.length - unread.length})
+              </summary>
               {nudges.filter((n) => n.read_at).map((n) => (
-                <div className="card nudge" key={n.id}>
+                <div
+                  key={n.id}
+                  className="mt-2 flex items-center gap-3 rounded-[12px] border border-[#262c38] bg-[#151922] p-3"
+                >
                   <Avatar emoji={n.from_emoji} color={n.from_color} name={n.from_name} size={28} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5 }}>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13.5px]">
                       <b>{n.from_name ?? t('unnamedFriend')}</b> · {n.task_title}
                     </div>
-                    {n.message && <div className="thread">“{n.message}”</div>}
+                    {n.message && (
+                      <div className="text-[12.5px] italic text-[#8b93a4]">“{n.message}”</div>
+                    )}
                   </div>
-                  <button className="ghost" onClick={async () => { await dismissNudge(n.id); void refresh(); }}>✕</button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={async () => { await dismissNudge(n.id); void refresh(); }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               ))}
             </details>
@@ -252,64 +314,73 @@ export default function CircleView({ signedIn }: { signedIn: boolean }) {
       )}
 
       {/* ---------- invite: a modal, not a wall of form ---------- */}
-      {showInvite && (
-        <div className="ask-overlay" onClick={() => setShowInvite(false)}>
-          <div className="ask ask-wide" onClick={(e) => e.stopPropagation()}>
-            <h3>{t('addAFriend')}</h3>
+      <Dialog open={showInvite} onOpenChange={setShowInvite}>
+        <DialogContent className="max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>{t('addAFriend')}</DialogTitle>
+          </DialogHeader>
 
-            <div className="field">
-              <label>{t('yourCode')}</label>
-              {code ? (
-                <div className="code-box">
-                  <code className="invite-code">{code}</code>
-                  <button
-                    className={copied ? 'primary' : ''}
-                    onClick={() => {
-                      navigator.clipboard?.writeText(code);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 1800);
-                    }}
-                  >
-                    {copied ? '✓ ' + t('copied') : t('copy')}
-                  </button>
-                </div>
-              ) : (
-                <button className="primary" disabled={busy} onClick={showCode}>
-                  {t('showMyCode')}
-                </button>
-              )}
-              <p className="muted small">{t('codeHint')}</p>
-            </div>
-
-            <div className="or-split"><span>{t('or')}</span></div>
-
-            <div className="field">
-              <label>{t('haveACode')}</label>
-              <div className="row">
-                <input
-                  value={joinCode}
-                  placeholder="ABC123"
-                  maxLength={8}
-                  className="code-input"
-                  onChange={(e) => setJoinCode(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && join()}
-                />
-                <button className="primary" disabled={busy || !joinCode.trim()} onClick={join}>
-                  {t('connect')}
-                </button>
+          <div className="flex flex-col gap-2">
+            <label className="text-[12.5px] text-[#8b93a4]">{t('yourCode')}</label>
+            {code ? (
+              <div className="flex items-center gap-2.5">
+                <code className="flex-1 rounded-[10px] border border-[#262c38] bg-[#0d0f14] px-3 py-2 font-mono text-[18px] tracking-[3px] text-[#f0b429]">
+                  {code}
+                </code>
+                <Button
+                  variant={copied ? 'primary' : 'default'}
+                  onClick={() => {
+                    navigator.clipboard?.writeText(code);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1800);
+                  }}
+                >
+                  {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copied ? t('copied') : t('copy')}
+                </Button>
               </div>
-            </div>
+            ) : (
+              <Button variant="primary" disabled={busy} onClick={showCode}>
+                {t('showMyCode')}
+              </Button>
+            )}
+            <p className="text-[12px] text-[#8b93a4]">{t('codeHint')}</p>
+          </div>
 
-            {err && <p className="ask-err">{err}</p>}
+          <div className="my-2 flex items-center gap-3 text-[12px] text-[#8b93a4]
+            before:h-px before:flex-1 before:bg-[#262c38]
+            after:h-px after:flex-1 after:bg-[#262c38]">
+            {t('or')}
+          </div>
 
-            <div className="ask-actions">
-              <button className="ghost" onClick={() => setShowInvite(false)}>{t('close')}</button>
+          <div className="flex flex-col gap-2">
+            <label className="text-[12.5px] text-[#8b93a4]">{t('haveACode')}</label>
+            <div className="flex gap-2">
+              <Input
+                value={joinCode}
+                placeholder="ABC123"
+                maxLength={8}
+                className="max-w-[150px] font-mono text-[16px] uppercase tracking-[3px]"
+                onChange={(e) => setJoinCode(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && join()}
+              />
+              <Button variant="primary" disabled={busy || !joinCode.trim()} onClick={join}>
+                {t('connect')}
+              </Button>
             </div>
           </div>
-        </div>
-      )}
 
-      <p className="muted small footnote">{t('sharingReadOnlyNote')}</p>
+          {err && <p className="text-[12.5px] text-[#f87171]">{err}</p>}
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowInvite(false)}>{t('close')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <p className="mt-[22px] text-[12px] text-[#8b93a4] opacity-55">
+        {t('sharingReadOnlyNote')}
+      </p>
     </div>
   );
 }

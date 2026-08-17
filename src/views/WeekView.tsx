@@ -14,7 +14,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { Check, Plus, Undo2, X } from 'lucide-react';
+import { Check, ChevronRight, Plus, Undo2, X } from 'lucide-react';
 
 export default function WeekView() {
   const monthGoals = useStore((s) => s.currentMonthGoals)();
@@ -205,8 +205,9 @@ export default function WeekView() {
           {weekGoals.length === 0 && <div className="empty">{t('nothingThisWeek')}</div>}
 
           {doneWeekGoals.length > 0 && (
-            <details className="mt-5" open>
-              <summary className="cursor-pointer py-1.5 text-[13px] text-[#34d399]">
+            <details className="group mt-5" open>
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-[10px] border border-[#262c38] bg-[#151922] px-3 py-2 text-[13px] text-[#34d399] transition-colors hover:border-[#39424f] [&::-webkit-details-marker]:hidden">
+                <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90 rtl:rotate-180 rtl:group-open:rotate-90" />
                 ✓ {t('finishedThisWeek')} ({doneWeekGoals.length})
               </summary>
               {doneWeekGoals.map((w) => {
