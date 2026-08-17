@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../store';
 import { MAX_WEEK_GOALS } from '../types';
 import { dayKey, weekKey } from '../dates';
+import { Coach, Example } from './Coach';
 
 export default function WeekView() {
   const monthGoals = useStore((s) => s.currentMonthGoals)();
@@ -40,6 +41,30 @@ export default function WeekView() {
         <p>Pull one or two month goals into this week, then break them into day tasks.</p>
       </div>
 
+      <Coach id="week" title="How to write a week goal">
+        <p>
+          A week goal is <b>one slice</b> of a month goal — the part you can realistically
+          finish in 7 days, around your actual life.
+        </p>
+        <p className="coach-rule">
+          Test it: could you finish this even in a bad week? If it needs everything to go
+          perfectly, cut it in half.
+        </p>
+        <Example
+          bad="Start running"
+          good="Run 3 times this week, 2km each"
+          why="A count and a distance. You'll know on Sunday if you did it."
+        />
+        <Example
+          bad="Make progress on checkout"
+          good="Stripe checkout works end to end in test mode"
+          why="Names the finish line, not the activity."
+        />
+        <p className="coach-foot">
+          Two maximum — and one is often the honest answer.
+        </p>
+      </Coach>
+
       {monthGoals.length === 0 ? (
         <div className="empty">
           No month goals yet.
@@ -65,7 +90,7 @@ export default function WeekView() {
                 <label>Week goal</label>
                 <input
                   value={title}
-                  placeholder="What must be true by Sunday?"
+                  placeholder="e.g. Run 3 times this week, 2km each"
                   onChange={(e) => setTitle(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && submit()}
                 />
@@ -120,7 +145,7 @@ export default function WeekView() {
                 <div className="row" style={{ marginTop: 10 }}>
                   <input
                     value={draft}
-                    placeholder="+ add a task for today"
+                    placeholder="+ a task you could do today in one sitting"
                     onChange={(e) => setTaskDraft({ ...taskDraft, [w.id]: e.target.value })}
                     onKeyDown={(e) => e.key === 'Enter' && addIt()}
                   />

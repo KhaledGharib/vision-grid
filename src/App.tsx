@@ -5,11 +5,13 @@ import BoardView from './views/BoardView';
 import MonthView from './views/MonthView';
 import WeekView from './views/WeekView';
 import TodayView from './views/TodayView';
+import Guide, { guideSeen, markGuideSeen } from './views/Guide';
 
 type Tab = 'board' | 'month' | 'week' | 'today';
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('today');
+  const [showGuide, setShowGuide] = useState(() => !guideSeen());
   const boards = useStore((s) => s.boards);
   const setActiveBoard = useStore((s) => s.setActiveBoard);
   const addBoard = useStore((s) => s.addBoard);
@@ -64,6 +66,14 @@ export default function App() {
         </div>
 
         <button
+          className="ghost help-btn"
+          title="How this works"
+          onClick={() => setShowGuide(true)}
+        >
+          ?
+        </button>
+
+        <button
           className="ghost"
           title="Export all data as JSON"
           onClick={() =>
@@ -86,6 +96,15 @@ export default function App() {
       {tab === 'month' && <MonthView />}
       {tab === 'week' && <WeekView />}
       {tab === 'today' && <TodayView />}
+
+      {showGuide && (
+        <Guide
+          onClose={() => {
+            markGuideSeen();
+            setShowGuide(false);
+          }}
+        />
+      )}
     </div>
   );
 }

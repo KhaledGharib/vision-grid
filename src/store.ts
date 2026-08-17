@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import type { AppState, Board, BoardElement, MonthGoal, ShapeKind, Task, WeekGoal } from './types';
-import { MAX_MITS, MAX_MONTH_GOALS, MAX_WEEK_GOALS, MAX_ZOOM, MIN_ZOOM, SPAWN_H, SPAWN_W } from './types';
+import { MAX_MITS, MAX_MONTH_GOALS, MAX_WEEK_GOALS, MAX_ZOOM, MIN_ZOOM, SPAWN_H, SPAWN_W, STARVE_AFTER_DAYS } from './types';
 import { dayKey, monthKey, weekKey } from './dates';
 import { loadState, saveState, putImage, deleteImage } from './storage';
 
@@ -109,6 +109,10 @@ interface Store extends AppState {
   todayTasks: () => Task[];
   visionForTask: (t: Task) => BoardElement | undefined;
   visionProgress: (visionId: string) => { done: number; total: number };
+  /** Days since the last completed task for this vision; null if nothing done yet. */
+  visionIdleDays: (visionId: string) => number | null;
+  /** 0..1 — how starved this vision looks. 1 = fully faded. */
+  visionStarvation: (visionId: string) => number;
 }
 
 const snap = (s: AppState): Snapshot => ({
@@ -447,7 +451,12 @@ export const useStore = create<Store>((set, get) => {
       return t.id;
     },
     toggleTask: (id) => {
-      set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)) }));
+      set((s) => ({
+        tasks: s.tasks.map((t) =>
+          t.id === id
+            ? { ...t, done: !t.done, completedAt: !t.done ? now() : null }
+            : t),
+      }));
       persist();
     },
     toggleMit: (id) => {
@@ -515,6 +524,29 @@ export const useStore = create<Store>((set, get) => {
       const wgIds = s.weekGoals.filter((w) => mgIds.includes(w.monthGoalId)).map((w) => w.id);
       const tasks = s.tasks.filter((t) => wgIds.includes(t.weekGoalId));
       return { done: tasks.filter((t) => t.done).length, total: tasks.length };
+    },
+
+    visionIdleDays: (visionId) => {
+      const s = get();
+      const mgIds = s.monthGoals.filter((g) => g.visionId === visionId).map((g) => g.id);
+      const wgIds = s.weekGoals.filter((w) => mgIds.includes(w.monthGoalId)).map((w) => w.id);
+      const stamps = s.tasks
+        .filter((t) => wgIds.includes(t.weekGoalId) && t.done && t.completedAt)
+        .map((t) => new Date(t.completedAt as string).getTime());
+      if (!stamps.length) return null;
+      return Math.floor((Date.now() - Math.max(...stamps)) / 86400000);
+    },
+
+    visionStarvation: (visionId) => {
+      const s = get();
+      const idle = s.visionIdleDays(visionId);
+      const el = s.elements.find((e) => e.id === visionId);
+      // nothing finished yet: measure from when the vision was created, not epoch
+      const days = idle ?? (el
+        ? Math.floor((Date.now() - new Date(el.createdAt).getTime()) / 86400000)
+        : 0);
+      if (days <= 0) return 0;
+      return Math.max(0, Math.min(1, days / STARVE_AFTER_DAYS));
     },
   };
 });

@@ -59,6 +59,37 @@ An **infinite canvas** (pan/zoom), not a fixed page.
 - **Week** — max 2 goals, each must select a month goal. Add day tasks inline.
 - **Today** — tasks with vision thumbnail + full thread. Star up to 3 MITs.
 
+## Guidance
+
+The hardest part of this system is knowing how to *phrase* a goal at each level, so
+the app teaches it inline.
+
+- **First-run guide** — a 4-step walkthrough of the chain that ticks off steps as you
+  complete them and tells you exactly which tab to open next. Re-open any time with
+  the `?` button in the top bar.
+- **Coach panels** — every planning tab has a collapsible card explaining what belongs
+  at that level, with a one-line test and real ✗/✓ examples
+  ("Get fit" → "Run 5km without stopping"). Collapse state is remembered per tab.
+
+The rule of thumb the app teaches:
+
+| Level | Question | Example |
+|---|---|---|
+| Month | What will be **done** in 30 days? | Run 5km without stopping |
+| Week | What slice fits in 7 days, even in a bad week? | Run 3 times, 2km each |
+| Day | What can I finish in one sitting? | Run 2km before work |
+
+## Progress and attention
+
+- **Progress rings** on each vision tile show the share of its tasks that are finished.
+  Caption shows `done/total` and days to target.
+- **Starving visions** desaturate and dim as time passes with nothing completed,
+  reaching full grayscale plus a `STARVING` badge after 30 days. Finish one task and
+  the colour returns immediately. No notifications, no guilt copy — you just open the
+  board and see which dreams are going gray.
+
+Both are driven purely by **completed tasks**. There is no timer to run.
+
 Multiple boards are supported, but only the **active** board's goals can receive tasks —
 focus is enforced by design.
 

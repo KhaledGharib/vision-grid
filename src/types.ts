@@ -92,6 +92,8 @@ export interface Task {
   isMit: boolean;
   done: boolean;
   minutesSpent: number;
+  /** When this task was last ticked off. Drives progress + starvation — no timer needed. */
+  completedAt?: string | null;
   createdAt: string;
 }
 
@@ -109,6 +111,10 @@ export interface AppState {
 export const MAX_MONTH_GOALS = 3;
 export const MAX_WEEK_GOALS = 2;
 export const MAX_MITS = 3;
+
+// ---- Attention ----
+/** Days with no completed task before a vision starts visibly fading. */
+export const STARVE_AFTER_DAYS = 30;
 
 // ---- Canvas (infinite) ----
 // No artboard bounds. These only seed where new elements first appear.

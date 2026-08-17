@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../store';
 import { MAX_MONTH_GOALS } from '../types';
 import { monthKey, monthLabel } from '../dates';
+import { Coach, Example } from './Coach';
 
 export default function MonthView() {
   const myVisions = useStore((s) => s.visions)();
@@ -34,6 +35,35 @@ export default function MonthView() {
         <p>Three goals maximum. The limit is the feature — it forces you to choose.</p>
       </div>
 
+      <Coach id="month" title="How to write a month goal">
+        <p>
+          A month goal is <b>one visible result</b> you could finish in about 30 days —
+          not a habit, not a wish, not a whole project.
+        </p>
+        <p className="coach-rule">
+          Test it: on the last day of the month, could you point at something and say
+          <i> "there, that's done"</i>? If not, it's too vague.
+        </p>
+        <Example
+          bad="Get fit"
+          good="Run 5km without stopping"
+          why="'Get fit' never ends. 5km is a finish line you can cross."
+        />
+        <Example
+          bad="Work on the app"
+          good="Ship the paid beta to 10 users"
+          why="'Work on' has no end. 10 users is countable."
+        />
+        <Example
+          bad="Save money"
+          good="Move SAR 5,000 into savings"
+          why="A number turns a hope into a target."
+        />
+        <p className="coach-foot">
+          Three maximum. If everything matters, nothing does.
+        </p>
+      </Coach>
+
       {myVisions.length === 0 ? (
         <div className="empty">
           You need a vision first.
@@ -56,10 +86,10 @@ export default function MonthView() {
                 </select>
               </div>
               <div className="field">
-                <label>Goal for this month</label>
+                <label>What will be DONE by the end of this month?</label>
                 <input
                   value={title}
-                  placeholder="Something you can finish in 30 days"
+                  placeholder="e.g. Run 5km without stopping"
                   onChange={(e) => setTitle(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && submit()}
                 />

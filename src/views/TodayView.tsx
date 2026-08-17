@@ -2,6 +2,7 @@ import { useStore } from '../store';
 import { MAX_MITS, type Task } from '../types';
 import { todayLabel } from '../dates';
 import { useImage } from '../hooks/useImage';
+import { Coach, Example } from './Coach';
 
 function TaskRow({ t }: { t: Task }) {
   const toggleTask = useStore((s) => s.toggleTask);
@@ -52,6 +53,30 @@ export default function TodayView() {
             : `${doneCount}/${tasks.length} done · star up to ${MAX_MITS} as today's most important.`}
         </p>
       </div>
+
+      <Coach id="today" title="How to pick today's tasks">
+        <p>
+          A task is <b>one concrete action</b> you could sit down and finish in a single
+          sitting — usually 20–60 minutes. If it needs several sessions, it's still a goal.
+        </p>
+        <p className="coach-rule">
+          Test it: do you know exactly what to do first? If you'd have to think about
+          "how do I even start", break it down further.
+        </p>
+        <Example
+          bad="Sort out finances"
+          good="Cancel the 3 subscriptions I don't use"
+          why="You can start this in 10 seconds. The other one you'd avoid all week."
+        />
+        <Example
+          bad="Work on Stripe"
+          good="Add the webhook endpoint and test one payment"
+          why="Specific enough that 'done' is obvious."
+        />
+        <p className="coach-foot">
+          Star up to 3 as your MITs. If you only did those, the day counts.
+        </p>
+      </Coach>
 
       {tasks.length === 0 ? (
         <div className="empty">
