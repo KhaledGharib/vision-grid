@@ -4,9 +4,9 @@
 
 export type Lang = 'en' | 'ar';
 
-export const LANGS: { id: Lang; label: string; native: string; flag: string }[] = [
-  { id: 'en', label: 'English', native: 'English', flag: '🇬🇧' },
-  { id: 'ar', label: 'Arabic', native: 'العربية', flag: '🇸🇦' },
+export const LANGS: { id: Lang; label: string; native: string }[] = [
+  { id: 'en', label: 'English', native: 'English' },
+  { id: 'ar', label: 'Arabic', native: 'العربية' },
 ];
 
 export const STRINGS = {
@@ -509,6 +509,81 @@ export const STRINGS = {
   create: { en: 'Create', ar: 'إنشاء' },
   confirmBtn: { en: 'Confirm', ar: 'تأكيد' },
   deleteQ: { en: 'Delete', ar: 'حذف' },
+
+  // ---------- board / canvas chrome ----------
+  // The canvas LAYOUT stays LTR by design, but its LABELS are UI text.
+  starvingNothingYet: {
+    en: 'Nothing finished yet for this vision',
+    ar: 'لم يُنجز شيء لهذه الرؤية بعد',
+  },
+  starvingSince: {
+    en: '{n} days since you finished anything here',
+    ar: 'مضى {n} يوماً دون إنجاز أي شيء هنا',
+  },
+  rotateHint: { en: 'Rotate (Shift = 15°)', ar: 'تدوير (Shift = ١٥°)' },
+  undoTitle: { en: 'Undo (Ctrl+Z)', ar: 'تراجع (Ctrl+Z)' },
+  redoTitle: { en: 'Redo (Ctrl+Y)', ar: 'إعادة (Ctrl+Y)' },
+  duplicateTitle: { en: 'Duplicate (Ctrl+D)', ar: 'تكرار (Ctrl+D)' },
+  resetZoom: { en: 'Reset to 100%', ar: 'العودة إلى ١٠٠٪' },
+  dropImagesHint: {
+    en: 'Drop images anywhere, or use the toolbar.',
+    ar: 'أفلِت الصور في أي مكان، أو استخدم شريط الأدوات.',
+  },
+  dropImagesSub: {
+    en: 'Images become visions — the only elements you can attach goals to.',
+    ar: 'الصور تصبح رؤى — وهي العناصر الوحيدة التي يمكن ربط الأهداف بها.',
+  },
+
+  // ---------- inspector ----------
+  boardEmptyShort: { en: 'Nothing on the board yet.', ar: 'لا يوجد شيء على اللوحة بعد.' },
+  alignLabel: { en: 'Align', ar: 'محاذاة' },
+  // Geometric — the board keeps absolute x/y, so these stay physical.
+  alignLeftEdge: { en: 'Align left edges', ar: 'محاذاة الحدود اليسرى' },
+  alignRightEdge: { en: 'Align right edges', ar: 'محاذاة الحدود اليمنى' },
+  // 'start'/'end' rather than left/right: in Arabic the leading edge is on the right.
+  alignStart: { en: 'Align to the leading edge', ar: 'محاذاة إلى الحافة الأمامية' },
+  alignEnd: { en: 'Align to the trailing edge', ar: 'محاذاة إلى الحافة الخلفية' },
+  alignHCenter: { en: 'Centre horizontally', ar: 'توسيط أفقي' },
+  alignTop: { en: 'Align top', ar: 'محاذاة للأعلى' },
+  alignBottom: { en: 'Align bottom', ar: 'محاذاة للأسفل' },
+  alignVCenter: { en: 'Centre vertically', ar: 'توسيط رأسي' },
+  weightRegular: { en: 'Reg', ar: 'عادي' },
+  weightSemi: { en: 'Semi', ar: 'متوسط' },
+  weightBold: { en: 'Bold', ar: 'عريض' },
+  toFront: { en: 'Bring to front', ar: 'إلى الأمام تماماً' },
+  forward: { en: 'Forward', ar: 'للأمام' },
+  backward: { en: 'Backward', ar: 'للخلف' },
+  toBack: { en: 'Send to back', ar: 'إلى الخلف تماماً' },
+
+  // ---------- minimap ----------
+  showMinimap: { en: 'Show minimap', ar: 'إظهار الخريطة المصغرة' },
+  hideMinimap: { en: 'Hide minimap', ar: 'إخفاء الخريطة المصغرة' },
+  minimapHint: { en: 'Click or drag to navigate', ar: 'انقر أو اسحب للتنقل' },
+
+  // ---------- images ----------
+  imageTooLarge: {
+    en: 'That image is too large — keep it under 12 MB.',
+    ar: 'هذه الصورة كبيرة جداً — أبقِها أقل من ١٢ ميجابايت.',
+  },
+  imageInvalid: {
+    en: 'That file is not an image the board can read.',
+    ar: 'هذا الملف ليس صورة يمكن للوحة قراءتها.',
+  },
+
+  // ---------- carry-over ----------
+  carriedFromMonth: { en: 'from {m}', ar: 'من {m}' },
+  carriedFromWeek: { en: 'from {m}', ar: 'من {m}' },
+  stillOpen: { en: 'still open', ar: 'ما زال مفتوحاً' },
+  carriedTitle: {
+    en: 'Still open from an earlier period — it carried forward instead of vanishing.',
+    ar: 'ما زال مفتوحاً من فترة سابقة — تم ترحيله بدلاً من اختفائه.',
+  },
+
+  // ---------- pairing ----------
+  codeThrottled: {
+    en: 'Too many wrong codes. Wait an hour and try again.',
+    ar: 'محاولات خاطئة كثيرة. انتظر ساعة ثم أعد المحاولة.',
+  },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;

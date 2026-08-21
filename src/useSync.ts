@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase, cloudEnabled, type SyncStatus } from './cloud';
 import {
   pushState, pullState, uploadImage, downloadImage, listRemoteImageIds,
@@ -21,6 +21,19 @@ import type { AppState } from './types';
  */
 
 const PUSH_DEBOUNCE_MS = 2500;
+
+/**
+ * The parts of the store that actually belong in the cloud document.
+ *
+ * zustand replaces only the slices a mutation touches, so comparing references
+ * is enough to tell "the board changed" from "the user scrolled". Subscribing
+ * to the whole store meant panning or zooming the canvas queued a full upload.
+ */
+type Slices = readonly unknown[];
+const slicesOf = (s: ReturnType<typeof useStore.getState>): Slices =>
+  [s.user, s.boards, s.elements, s.monthGoals, s.weekGoals, s.tasks];
+
+const differ = (a: Slices, b: Slices) => a.some((v, i) => v !== b[i]);
 
 function snapshot(): AppState {
   const s = useStore.getState();
@@ -138,7 +151,10 @@ export function useSync() {
       apply(Boolean(data.session), data.session?.user.email ?? null);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((evt, session) => {
+      // TOKEN_REFRESHED fires roughly hourly and says nothing new about which
+      // account owns this browser, so a full pull/push there is pure waste.
+      if (evt === 'TOKEN_REFRESHED') return;
       apply(Boolean(session), session?.user.email ?? null);
     });
 
@@ -149,13 +165,26 @@ export function useSync() {
   }, []);
 
   // ---- debounced push on local change ----
+  // status is read through a ref rather than a dependency: this effect's own
+  // body calls setStatus, so depending on status tore the subscription down and
+  // rebuilt it on every sync transition.
+  const statusRef = useRef(status);
+  statusRef.current = status;
+
   useEffect(() => {
     if (!cloudEnabled || !supabase) return;
 
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let seen = slicesOf(useStore.getState());
 
-    const unsub = useStore.subscribe(() => {
-      if (status === 'signed-out' || status === 'offline') return;
+    const unsub = useStore.subscribe((s) => {
+      const next = slicesOf(s);
+      if (!differ(next, seen)) return; // pan, zoom, selection, tool
+      seen = next;
+
+      const st = statusRef.current;
+      if (st === 'signed-out' || st === 'offline') return;
+
       if (timer) clearTimeout(timer);
       timer = setTimeout(async () => {
         try {
@@ -175,7 +204,7 @@ export function useSync() {
       if (timer) clearTimeout(timer);
       unsub();
     };
-  }, [status]);
+  }, []);
 
   return { status, email };
 }

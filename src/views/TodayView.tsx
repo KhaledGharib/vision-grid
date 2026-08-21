@@ -1,4 +1,4 @@
-import { useStore } from '../store';
+import { useStore, useStoreData } from '../store';
 import { MAX_MITS, type Task } from '../types';
 import { todayLabel } from '../dates';
 import { useImage } from '../hooks/useImage';
@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { RotateCcw, Star, Target } from 'lucide-react';
 
 function TaskRow({ task }: { task: Task }) {
+  useStoreData();
   const toggleTask = useStore((s) => s.toggleTask);
   const toggleMit = useStore((s) => s.toggleMit);
   const vision = useStore((s) => s.visionForTask)(task);
@@ -79,6 +80,7 @@ function TaskRow({ task }: { task: Task }) {
 }
 
 export default function TodayView() {
+  useStoreData();
   const tasks = useStore((s) => s.todayTasks)();
   const t = useT();
   const mits = tasks.filter((x) => x.isMit);

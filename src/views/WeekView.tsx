@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore } from '../store';
+import { useStore, useStoreData } from '../store';
 import { MAX_WEEK_GOALS } from '../types';
 import { dayKey, weekKey } from '../dates';
 import { Coach, Example } from './Coach';
@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { Check, ChevronRight, Plus, Undo2, X } from 'lucide-react';
 
 export default function WeekView() {
+  useStoreData();
   const monthGoals = useStore((s) => s.currentMonthGoals)();
   const weekGoals = useStore((s) => s.currentWeekGoals)();
   const allEls = useStore((s) => s.elements);
@@ -77,6 +78,7 @@ export default function WeekView() {
             const v = allEls.find((x) => x.id === mg?.visionId);
             const mine = tasks.filter((task) => task.weekGoalId === w.id);
             const draft = taskDraft[w.id] ?? '';
+            const carried = w.weekKey !== weekKey();
             const addIt = () => {
               if (addTask(w.id, draft, dayKey())) setTaskDraft({ ...taskDraft, [w.id]: '' });
             };
@@ -84,7 +86,14 @@ export default function WeekView() {
               <Card className="mb-3.5" key={w.id}>
                 <div className="mb-2.5 flex items-center gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="text-[15px]">{w.title}</div>
+                    <div className="flex flex-wrap items-center gap-2 text-[15px]">
+                      {w.title}
+                      {carried && (
+                        <Badge variant="accent" title={t('carriedTitle')}>
+                          {t('carriedFromWeek', { m: w.weekKey })}
+                        </Badge>
+                      )}
+                    </div>
                     <div className="text-[12.5px] text-[#8b93a4]">
                       {mg?.title} → <b className="text-[#e6e9ef]">{v?.title ?? '—'}</b>
                     </div>

@@ -73,7 +73,9 @@ as $$
     pr.avatar_emoji,
     pr.avatar_color,
     bs.updated_at,
-    coalesce(jsonb_array_length(bs.state->'elements'), 0) as visions,
+    (select count(*)::int
+       from jsonb_array_elements(coalesce(bs.state->'elements', '[]'::jsonb)) e
+      where e->>'kind' = 'vision') as visions,
     (select count(*)::int from jsonb_array_elements(coalesce(bs.state->'tasks','[]'::jsonb)) t
        where t->>'date' = to_char(now(), 'YYYY-MM-DD')) as tasks_today,
     (select count(*)::int from jsonb_array_elements(coalesce(bs.state->'tasks','[]'::jsonb)) t

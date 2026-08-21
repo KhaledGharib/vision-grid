@@ -1,75 +1,84 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { nanoid } from 'nanoid';
-import { useStore } from '../store';
-import { putImage } from '../storage';
+import { useStore, useStoreData } from '../store';
+import { deleteImage, prepareImage, putImage } from '../storage';
 import { FONTS, PALETTE } from '../types';
+import type { BoardElement } from '../types';
 import { useT } from '../useT';
+import {
+  AlignStart, AlignHCenter, AlignEnd, AlignTop, AlignVCenter, AlignBottom,
+  ToFront, Forward, Backward, ToBack, Lock, Unlock,
+} from '../icons';
 
 export default function Inspector() {
+  useStoreData();
   const t = useT();
   const els = useStore((s) => s.boardElements)();
   const selection = useStore((s) => s.selection);
   const updateEl = useStore((s) => s.updateEl);
-  const board = useStore((s) => s.activeBoard)();
-  const setBoardBg = useStore((s) => s.setBoardBg);
   const bringToFront = useStore((s) => s.bringToFront);
   const sendToBack = useStore((s) => s.sendToBack);
   const bringForward = useStore((s) => s.bringForward);
   const sendBackward = useStore((s) => s.sendBackward);
   const align = useStore((s) => s.align);
-  const select = useStore((s) => s.select);
+  const updateLive = useStore((s) => s.updateLive);
+  const commit = useStore((s) => s.commit);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [imgErr, setImgErr] = useState<string | null>(null);
+  /** True once this focus or drag has already taken its single undo snapshot. */
+  const editing = useRef(false);
 
   const sel = els.filter((e) => selection.includes(e.id));
   const one = sel.length === 1 ? sel[0] : null;
 
+  // No selection, no panel. Every hook above has already run, so returning
+  // here does not change the hook order between renders.
+  if (sel.length === 0) return null;
+
+  /**
+   * A continuous control — a text field or a slider — is one edit, not one edit
+   * per keystroke. beginEdit() takes the snapshot once when the control is
+   * engaged; live() then mutates without touching the undo stack, and with the
+   * write to disk coalesced.
+   *
+   * Before this, typing a 20-character goal title pushed 20 full-state
+   * snapshots, so a 50-step history held about two titles and Ctrl+Z walked
+   * back one character at a time.
+   */
+  const beginEdit = () => {
+    if (editing.current) return;
+    commit();
+    editing.current = true;
+  };
+  const endEdit = () => { editing.current = false; };
+  const live = (id: string, patch: Partial<BoardElement>) => updateLive({ [id]: patch });
+
   return (
     <aside className="inspector">
-      {sel.length === 0 && (
-        <>
-          <h4>{t('boardPanel')}</h4>
-          <div className="field">
-            <label>{t('background')}</label>
-            <div className="swatches">
-              {PALETTE.map((c) => (
-                <button key={c} className={`sw${board?.bg === c ? ' on' : ''}`}
-                  style={{ background: c }} onClick={() => setBoardBg(c)} />
-              ))}
-            </div>
-          </div>
-          <p className="muted small">
-            Click an element to edit it. Drag on empty space to marquee-select.
-          </p>
-          <h4 style={{ marginTop: 18 }}>Layers</h4>
-          <div className="layers">
-            {[...els].reverse().map((e) => (
-              <button key={e.id} className="layer" onClick={() => select([e.id])}>
-                <span className="layer-ico">
-                  {e.kind === 'vision' ? '🖼' : e.kind === 'text' ? 'T' : '◻'}
-                </span>
-                <span className="layer-name">
-                  {e.kind === 'vision' ? e.title : e.kind === 'text' ? e.text : e.shape}
-                </span>
-                {e.locked && <span>🔒</span>}
-              </button>
-            ))}
-            {els.length === 0 && <p className="muted small">Nothing on the board yet.</p>}
-          </div>
-        </>
-      )}
-
       {sel.length > 1 && (
         <>
           <h4>{sel.length} {t('selectedCount')}</h4>
           <div className="field">
-            <label>Align</label>
+            <label>{t('alignLabel')}</label>
             <div className="btn-grid">
-              <button onClick={() => align('left')} title="Align left">⇤</button>
-              <button onClick={() => align('hcenter')} title="Center horizontally">↔</button>
-              <button onClick={() => align('right')} title="Align right">⇥</button>
-              <button onClick={() => align('top')} title="Align top">⇡</button>
-              <button onClick={() => align('vcenter')} title="Center vertically">↕</button>
-              <button onClick={() => align('bottom')} title="Align bottom">⇣</button>
+              <button onClick={() => align('left')} title={t('alignLeftEdge')} aria-label={t('alignLeftEdge')}>
+                <AlignStart className="icon" />
+              </button>
+              <button onClick={() => align('hcenter')} title={t('alignHCenter')} aria-label={t('alignHCenter')}>
+                <AlignHCenter className="icon" />
+              </button>
+              <button onClick={() => align('right')} title={t('alignRightEdge')} aria-label={t('alignRightEdge')}>
+                <AlignEnd className="icon" />
+              </button>
+              <button onClick={() => align('top')} title={t('alignTop')} aria-label={t('alignTop')}>
+                <AlignTop className="icon" />
+              </button>
+              <button onClick={() => align('vcenter')} title={t('alignVCenter')} aria-label={t('alignVCenter')}>
+                <AlignVCenter className="icon" />
+              </button>
+              <button onClick={() => align('bottom')} title={t('alignBottom')} aria-label={t('alignBottom')}>
+                <AlignBottom className="icon" />
+              </button>
             </div>
           </div>
         </>
@@ -83,13 +92,20 @@ export default function Inspector() {
             <>
               <div className="field">
                 <label>{t('title')}</label>
-                <input value={one.title ?? ''} onChange={(e) => updateEl(one.id, { title: e.target.value })} />
+                <input
+                  value={one.title ?? ''}
+                  onFocus={beginEdit}
+                  onBlur={endEdit}
+                  onChange={(e) => live(one.id, { title: e.target.value })}
+                />
               </div>
               <div className="field">
                 <label>{t('whyMatters')}</label>
                 <textarea rows={3} value={one.why ?? ''}
-                  placeholder="The reason you'll still care in November..."
-                  onChange={(e) => updateEl(one.id, { why: e.target.value })} />
+                  placeholder={t('whyPlaceholder')}
+                  onFocus={beginEdit}
+                  onBlur={endEdit}
+                  onChange={(e) => live(one.id, { why: e.target.value })} />
               </div>
               <div className="field">
                 <label>{t('targetDate')}</label>
@@ -108,16 +124,32 @@ export default function Inspector() {
               <div className="field">
                 <label>{t('cornerRadius')} — {one.radius ?? 12}px</label>
                 <input type="range" min={0} max={80} value={one.radius ?? 12}
-                  onChange={(e) => updateEl(one.id, { radius: +e.target.value }, false)} />
+                  onPointerDown={beginEdit} onPointerUp={endEdit}
+                  onFocus={beginEdit} onBlur={endEdit}
+                  onChange={(e) => live(one.id, { radius: +e.target.value })} />
               </div>
               <button onClick={() => fileRef.current?.click()}>{t('replaceImage')}</button>
+              {imgErr && <p className="muted small" role="alert">{imgErr}</p>}
               <input ref={fileRef} type="file" accept="image/*" hidden
                 onChange={async (e) => {
                   const f = e.target.files?.[0];
+                  e.target.value = ''; // so the same file can be picked twice
                   if (!f) return;
-                  const id = nanoid();
-                  await putImage(id, f);
-                  updateEl(one.id, { imageId: id });
+                  setImgErr(null);
+                  const previous = one.imageId;
+                  try {
+                    const blob = await prepareImage(f);
+                    const id = nanoid();
+                    await putImage(id, blob);
+                    updateEl(one.id, { imageId: id });
+                    // Only now is the old blob unreferenced. Leaving it behind
+                    // orphaned it in IndexedDB and in the storage bucket.
+                    if (previous) void deleteImage(previous);
+                  } catch (err) {
+                    setImgErr(err instanceof Error && err.message === 'image_too_large'
+                      ? t('imageTooLarge')
+                      : t('imageInvalid'));
+                  }
                 }} />
             </>
           )}
@@ -127,12 +159,16 @@ export default function Inspector() {
               <div className="field">
                 <label>{t('text')}</label>
                 <textarea rows={3} value={one.text ?? ''}
-                  onChange={(e) => updateEl(one.id, { text: e.target.value })} />
+                  onFocus={beginEdit}
+                  onBlur={endEdit}
+                  onChange={(e) => live(one.id, { text: e.target.value })} />
               </div>
               <div className="field">
                 <label>{t('size')} — {one.fontSize}px</label>
                 <input type="range" min={10} max={120} value={one.fontSize ?? 22}
-                  onChange={(e) => updateEl(one.id, { fontSize: +e.target.value }, false)} />
+                  onPointerDown={beginEdit} onPointerUp={endEdit}
+                  onFocus={beginEdit} onBlur={endEdit}
+                  onChange={(e) => live(one.id, { fontSize: +e.target.value })} />
               </div>
               <div className="field">
                 <label>{t('weight')}</label>
@@ -140,18 +176,31 @@ export default function Inspector() {
                   {[400, 600, 800].map((w) => (
                     <button key={w} className={one.fontWeight === w ? 'on' : ''}
                       onClick={() => updateEl(one.id, { fontWeight: w })}>
-                      {w === 400 ? 'Reg' : w === 600 ? 'Semi' : 'Bold'}
+                      {w === 400 ? t('weightRegular') : w === 600 ? t('weightSemi') : t('weightBold')}
                     </button>
                   ))}
                 </div>
               </div>
               <div className="field">
-                <label>Align</label>
+                <label>{t('alignLabel')}</label>
                 <div className="btn-row">
-                  {(['left', 'center', 'right'] as const).map((a) => (
-                    <button key={a} className={one.align === a ? 'on' : ''}
-                      onClick={() => updateEl(one.id, { align: a })}>{a[0].toUpperCase()}</button>
-                  ))}
+                  {/* 'left' is the LEADING edge, so label it that way — in Arabic
+                      the leading edge is the right-hand side. */}
+                  <button className={one.align === 'left' ? 'on' : ''}
+                    title={t('alignStart')} aria-label={t('alignStart')}
+                    onClick={() => updateEl(one.id, { align: 'left' })}>
+                    <AlignStart className="icon icon-logical" />
+                  </button>
+                  <button className={one.align === 'center' ? 'on' : ''}
+                    title={t('alignHCenter')} aria-label={t('alignHCenter')}
+                    onClick={() => updateEl(one.id, { align: 'center' })}>
+                    <AlignHCenter className="icon" />
+                  </button>
+                  <button className={one.align === 'right' ? 'on' : ''}
+                    title={t('alignEnd')} aria-label={t('alignEnd')}
+                    onClick={() => updateEl(one.id, { align: 'right' })}>
+                    <AlignEnd className="icon icon-logical" />
+                  </button>
                 </div>
               </div>
               <div className="field">
@@ -198,45 +247,30 @@ export default function Inspector() {
                   ))}
                 </div>
               </div>
-              <div className="field">
-                <label>{t('borderWidth')} — {one.strokeWidth ?? 0}px</label>
-                <input type="range" min={0} max={20} value={one.strokeWidth ?? 0}
-                  onChange={(e) => updateEl(one.id, { strokeWidth: +e.target.value }, false)} />
-              </div>
-              <div className="field">
-                <label>{t('border')}</label>
-                <div className="swatches">
-                  {PALETTE.map((c) => (
-                    <button key={c} className={`sw${one.stroke === c ? ' on' : ''}`}
-                      style={{ background: c }} onClick={() => updateEl(one.id, { stroke: c })} />
-                  ))}
-                </div>
-              </div>
             </>
           )}
 
           {/* shared */}
           <div className="field">
-            <label>{t('opacity')} — {Math.round((one.opacity ?? 1) * 100)}%</label>
-            <input type="range" min={10} max={100} value={(one.opacity ?? 1) * 100}
-              onChange={(e) => updateEl(one.id, { opacity: +e.target.value / 100 }, false)} />
-          </div>
-          <div className="field">
-            <label>{t('rotation')} — {one.rotation}°</label>
-            <input type="range" min={-180} max={180} value={one.rotation}
-              onChange={(e) => updateEl(one.id, { rotation: +e.target.value }, false)} />
-          </div>
-          <div className="field">
             <label>{t('arrange')}</label>
             <div className="btn-grid four">
-              <button onClick={() => bringToFront(one.id)} title="Bring to front">⤒</button>
-              <button onClick={() => bringForward(one.id)} title="Forward">↑</button>
-              <button onClick={() => sendBackward(one.id)} title="Backward">↓</button>
-              <button onClick={() => sendToBack(one.id)} title="Send to back">⤓</button>
+              <button onClick={() => bringToFront(one.id)} title={t('toFront')} aria-label={t('toFront')}>
+                <ToFront className="icon" />
+              </button>
+              <button onClick={() => bringForward(one.id)} title={t('forward')} aria-label={t('forward')}>
+                <Forward className="icon" />
+              </button>
+              <button onClick={() => sendBackward(one.id)} title={t('backward')} aria-label={t('backward')}>
+                <Backward className="icon" />
+              </button>
+              <button onClick={() => sendToBack(one.id)} title={t('toBack')} aria-label={t('toBack')}>
+                <ToBack className="icon" />
+              </button>
             </div>
           </div>
-          <button onClick={() => updateEl(one.id, { locked: !one.locked })}>
-            {one.locked ? '🔓 Unlock' : '🔒 Lock'}
+          <button className="with-icon" onClick={() => updateEl(one.id, { locked: !one.locked })}>
+            {one.locked ? <Unlock className="icon" /> : <Lock className="icon" />}
+            {one.locked ? t('unlock') : t('lock')}
           </button>
         </>
       )}

@@ -31,7 +31,10 @@ An **infinite canvas** (pan/zoom), not a fixed page.
 - 8 resize handles + a separate rotation handle (Shift snaps to 15°)
 - Multi-select: Shift+click, or drag a marquee on empty space
 - Smart snap guides — pink lines when edges/centers align; hold Alt to disable
-- Undo/redo, 50 steps (Ctrl+Z / Ctrl+Y)
+- Undo/redo, 50 steps (Ctrl+Z / Ctrl+Y) — one step per *gesture*, not per event:
+  a drag snapshots once when it first moves, and a text field snapshots once when
+  it gains focus. Committing per keystroke meant a 20-character goal title ate 20
+  of the 50 slots and Ctrl+Z walked back one character at a time.
 - Pan with Space+drag or middle mouse; zoom 20%–300%
 - Minimap in the bottom-right corner
 - Per-element selection outlines; dashed box for multi-select
@@ -82,6 +85,28 @@ font too.
   whether it finished. The planning tabs deliberately show only *now*; this is the
   record.
 
+### Open goals carry, they do not evaporate
+
+A goal is *open* or *closed*. It is not "August's goal" — that is only where it
+was written down.
+
+```
+still active on the 1st  ->  carries into the new month, badged "from July"
+closed                   ->  drops into "Finished this month"
+```
+
+The planning views ask "what is still open?", not "what is stamped with this
+month?". They used to ask the second question, and because Week derives from
+Month and Today derives from Week, every active goal, week goal and task
+disappeared together at midnight on the 1st — mid-week, if the ISO week
+straddled the boundary. Nothing was lost from the data, but the app looked
+wiped and the chain had to be retyped.
+
+`monthKey` and `weekKey` still record the period a goal was *planned* in and
+are never rewritten, so History stays honest. A separate `completedAt` records
+when it closed, which is what "Finished this month" keys on — a goal planned in
+July and finished in August belongs in August's list.
+
 ### The caps have a way out
 
 A cap of 3 means *three things open at once*, not three things per month. When every
@@ -112,6 +137,16 @@ After three postponements the task stops rolling silently and surfaces one promp
 honest about when it was actually planned. `POSTPONE_LIMIT` in `types.ts` sets the
 threshold. This is the only thing the carry-over ever asks you — the rest is automatic.
 
+**Not now means not now.** It marks the task with `POSTPONE_DROPPED` and the
+roll-forward skips it permanently. The sentinel is `-1`, which used to satisfy
+the "under the limit" test, so a dropped task came back the next morning with
+its counter reset to zero and the whole three-day cycle started again — the one
+prompt the design allows itself, on a loop.
+
+The prompt and Today now read from the same set of live goals, too. They did
+not, so **Do it today** could move a task into a week Today does not render,
+and the button looked broken.
+
 ## Languages — English & العربية
 
 The whole interface is bilingual. Toggle with the **English / العربية** switch in the
@@ -130,6 +165,14 @@ Switching to Arabic sets `<html lang="ar" dir="rtl">`, which:
 so flipping the canvas would move everything on the board. Only the surrounding UI
 mirrors; the board itself is unaffected. Text *elements* on the board still auto-detect
 Arabic independently of the UI language.
+
+That now includes the board chrome — the `starving` badge, the rotate and
+arrange tooltips, the layer list, the minimap, and the inspector's placeholder.
+Those were hardcoded English sitting inside an otherwise-translated page, and
+several of them already had Arabic strings in `i18n.ts` that no component was
+reading. Alignment controls are labelled by *leading* and *trailing* edge rather
+than left and right, because the underlying CSS uses logical `start`/`end` and
+"left" is simply wrong in Arabic.
 
 Adding a third language means adding one entry per key in `src/i18n.ts` — no component
 changes needed.
@@ -175,9 +218,14 @@ focus is enforced by design.
 The original reason the app exists. One or two people going through it with you, who
 notice when you go quiet.
 
-- **Pairing** — "Show my code" mints a 6-character invite code valid 14 days. Your
+- **Pairing** — "Show my code" mints an 8-character invite code valid 14 days. Your
   friend redeems it once; the friendship is permanent and unaffected when the code
   expires. Redeeming twice is a no-op, and you cannot pair with yourself.
+  The code is a bearer credential for read access to your whole board, so it is
+  drawn from `crypto.getRandomValues` over a 32-symbol alphabet (40 bits), not
+  `Math.random`; the 14-day expiry is clamped by a trigger rather than trusted
+  from the insert; failed redemptions are rate limited to 10 per hour per
+  account; and expired rows are pruned on use.
 - **Their board, read-only** — you see their real canvas: true coordinates, images,
   shapes, rotation, z-order, their board background, their progress rings and STARVING
   badges. Read-only is *structural*, not a disabled button: `ReadOnlyCanvas` renders
@@ -202,6 +250,15 @@ button disappears and nothing else changes.
 - One JSONB document per user (`boards_state`); images in a private `visions` bucket
 - Row-level security on every table, verified from outside with an anonymous key:
   reads return `[]`, forged inserts are rejected
+- **RLS alone was not enough on UPDATE.** A policy written with only `USING`
+  reuses that expression as its `WITH CHECK`, and a check can only see the NEW
+  row. `for update using (auth.uid() = b_id)` on `friendships` therefore let the
+  recipient rewrite `a_id` to any account and still pass, forging an accepted
+  friendship with a stranger — which `are_friends()` honours, which grants read
+  on that stranger's whole board. RLS cannot express "this column is immutable",
+  so the identity columns are now protected by a column-level `GRANT`:
+  `authenticated` simply holds no UPDATE privilege on them. Same treatment on
+  `nudges`, where the recipient may write `read_at` and nothing else.
 - **Sign-out wipes local data.** An ownership stamp (`vg:localOwner`) records whose
   board is on this device. Signing in as someone else never uploads the previous
   person's board into the new account — a real bug this fixed, not a hypothetical one.
@@ -216,12 +273,23 @@ VITE_SUPABASE_KEY=<publishable key>   # never the secret key
 Both are baked in at build time, so they must also be set wherever you build (e.g.
 Cloudflare Pages environment variables) — a local `.env` is not visible to CI.
 
-SQL lives in `supabase/`: `schema.sql`, `social.sql`, `nudges.sql`, `profile.sql`.
+SQL lives in `supabase/`, applied in order: `schema.sql`, `social.sql`,
+`nudges.sql`, `profile.sql`, `hardening.sql`. Every file is idempotent and safe
+to re-run; `hardening.sql` is the security pass described above and carries the
+reasoning for each change in comments.
 
 ## Data
 
 - App state → `localStorage`, key `vision-grid:state:v1`
 - Images → IndexedDB `vision-grid-images`, stored as blobs (never file paths — those break)
+- Pictures are validated and normalised on the way in: non-images and anything
+  over 12 MB are refused with a message, and anything longer than 2048px on its
+  long edge is re-encoded to WebP at that size (kept only if it actually came out
+  smaller). A vision tile is never drawn near that large, and the full-resolution
+  original was being written to IndexedDB *and* uploaded whole.
+- Duplicating a vision copies its blob under a new id. Sharing one `imageId`
+  between two elements meant deleting either copy deleted the picture out from
+  under the other.
 
 Both live behind `src/storage.ts`. Swapping in Tauri + SQLite later means rewriting
 that one file. When signed in, the same state is mirrored to Supabase — local stays the
@@ -332,10 +400,15 @@ system is how these die.
 
 - **Last-write-wins sync.** Two devices editing the same board can overwrite each
   other. Mitigated by friend access being read-only, but not solved.
-- **No revoke for invite codes**, and expired rows are never pruned.
+- **No revoke for invite codes.** They expire in 14 days and expired rows are
+  pruned on the next redemption, but there is no button to kill one early.
 - **Sign-out wipe is unverified against two real accounts.** The logic is right and
   the ownership guard is in place, but it's only been proven in isolation, not by
   signing in as two people on one machine.
+- **The bundle is one 677 kB chunk.** The Supabase client is a large slice of it
+  and loads even when `.env` is absent and the cloud is off, which contradicts
+  "delete `.env` and the app is purely local". It wants a dynamic import behind
+  `cloudEnabled`.
 - **Board templates** — a first attempt was written against the old fixed-artboard
   model and deleted; it would need rebuilding in world coordinates.
 

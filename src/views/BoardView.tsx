@@ -1,14 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import { useStore } from '../store';
+import { useStore, useStoreData } from '../store';
 import BoardCanvas from './BoardCanvas';
 import Inspector from './Inspector';
 import Minimap from './Minimap';
 import { exportBoardPng } from '../export';
-import { bounds } from '../canvas';
+import { visualBounds } from '../canvas';
 import { PALETTE, SHAPE_TOOLS } from '../types';
 import { useT } from '../useT';
+import type { StringKey } from '../i18n';
+import {
+  AddVision, TextHeading, TextBody, Quote, ShapeRect, ShapeEllipse,
+  Undo, Redo, Duplicate, Delete, ZoomOut, ZoomIn, FitAll, ExportPng,
+} from '../icons';
 
 export default function BoardView() {
+  useStoreData();
   const t = useT();
   const addVision = useStore((s) => s.addVision);
   const addText = useStore((s) => s.addText);
@@ -31,6 +37,7 @@ export default function BoardView() {
   const commit = useStore((s) => s.commit);
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [imgErr, setImgErr] = useState<StringKey | null>(null);
 
   /** Zoom about the viewport center. */
   const zoomCenter = (factor: number) => {
@@ -46,7 +53,7 @@ export default function BoardView() {
     const target = onlySelection && selection.length
       ? els.filter((e) => selection.includes(e.id))
       : els;
-    const bb = bounds(target);
+    const bb = visualBounds(target);
     if (!bb) { setZoom(1); setPan(0, 0); return; }
     const pad = 80;
     const z = Math.max(
@@ -62,8 +69,16 @@ export default function BoardView() {
 
   const onFiles = async (files: FileList | null) => {
     if (!files) return;
+    setImgErr(null);
     for (const f of Array.from(files)) {
-      if (f.type.startsWith('image/')) await addVision(f, f.name.replace(/\.[^.]+$/, ''));
+      if (!f.type.startsWith('image/')) continue;
+      try {
+        await addVision(f, f.name.replace(/\.[^.]+$/, ''));
+      } catch (err) {
+        // Keep going through the rest of the drop; report the first refusal.
+        setImgErr(err instanceof Error && err.message === 'image_too_large'
+          ? 'imageTooLarge' : 'imageInvalid');
+      }
     }
   };
 
@@ -86,7 +101,7 @@ export default function BoardView() {
       if (!mod && e.key.toLowerCase() === 'r') { setTool('rect'); return; }
       if (!mod && e.key.toLowerCase() === 'o') { setTool('ellipse'); return; }
       if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); select(els.map((x) => x.id)); return; }
-      if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicateSelected(); return; }
+      if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); void duplicateSelected(); return; }
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected(); return; }
       if (e.key === 'Escape') { select([]); setTool('select'); return; }
 
@@ -134,42 +149,75 @@ export default function BoardView() {
 
         <span className="tb-sep" />
         <button
-          className="primary add-vision"
+          className="primary add-vision with-icon"
           title={t('addVisionTitle')}
           onClick={() => fileRef.current?.click()}
         >
-          🖼 {t('addVision')}
+          <AddVision className="icon" />
+          {t('addVision')}
         </button>
         <span className="tb-sep" />
-        <button onClick={() => addText('heading')}>T {t('heading')}</button>
-        <button onClick={() => addText('body')}>T {t('body')}</button>
-        <button onClick={() => addText('quote')}>❝ {t('quote')}</button>
+        <button className="with-icon" onClick={() => addText('heading')}>
+          <TextHeading className="icon" />
+          {t('heading')}
+        </button>
+        <button className="with-icon" onClick={() => addText('body')}>
+          <TextBody className="icon" />
+          {t('body')}
+        </button>
+        <button className="with-icon" onClick={() => addText('quote')}>
+          <Quote className="icon" />
+          {t('quote')}
+        </button>
         <span className="tb-sep" />
         <button className={tool === 'rect' ? 'on' : ''} title={t('rectTool')}
-          onClick={() => setTool('rect')}>▭</button>
+          aria-label={t('rectTool')} onClick={() => setTool('rect')}>
+          <ShapeRect className="icon" />
+        </button>
         <button className={tool === 'ellipse' ? 'on' : ''} title={t('ellipseTool')}
-          onClick={() => setTool('ellipse')}>◯</button>
+          aria-label={t('ellipseTool')} onClick={() => setTool('ellipse')}>
+          <ShapeEllipse className="icon" />
+        </button>
 
         <span className="tb-sep" />
-        <button onClick={undo} title="Undo (Ctrl+Z)">↶</button>
-        <button onClick={redo} title="Redo (Ctrl+Y)">↷</button>
-        <button onClick={duplicateSelected} disabled={!selection.length} title="Duplicate (Ctrl+D)">⧉</button>
-        <button onClick={deleteSelected} disabled={!selection.length} title={t('deleteEl')}>🗑</button>
+        <button onClick={undo} title={t('undoTitle')} aria-label={t('undoTitle')}>
+          <Undo className="icon" />
+        </button>
+        <button onClick={redo} title={t('redoTitle')} aria-label={t('redoTitle')}>
+          <Redo className="icon" />
+        </button>
+        <button onClick={() => void duplicateSelected()} disabled={!selection.length}
+          title={t('duplicateTitle')} aria-label={t('duplicateTitle')}>
+          <Duplicate className="icon" />
+        </button>
+        <button onClick={deleteSelected} disabled={!selection.length}
+          title={t('deleteEl')} aria-label={t('deleteEl')}>
+          <Delete className="icon" />
+        </button>
 
         <span className="spacer" />
 
         <div className="zoomer">
-          <button onClick={() => zoomCenter(1 / 1.2)} title={t('zoomOut')}>−</button>
-          <button className="zoom-val" onClick={() => zoomCenter(1 / zoom)} title="Reset to 100%">
+          <button onClick={() => zoomCenter(1 / 1.2)} title={t('zoomOut')} aria-label={t('zoomOut')}>
+            <ZoomOut className="icon" />
+          </button>
+          <button className="zoom-val" onClick={() => zoomCenter(1 / zoom)} title={t('resetZoom')}>
             {Math.round(zoom * 100)}%
           </button>
-          <button onClick={() => zoomCenter(1.2)} title={t('zoomIn')}>+</button>
-          <button onClick={() => fitToScreen(false)} title={t('fitAll')}>⤢</button>
+          <button onClick={() => zoomCenter(1.2)} title={t('zoomIn')} aria-label={t('zoomIn')}>
+            <ZoomIn className="icon" />
+          </button>
+          <button onClick={() => fitToScreen(false)} title={t('fitAll')} aria-label={t('fitAll')}>
+            <FitAll className="icon" />
+          </button>
         </div>
-        <button disabled={busy} onClick={async () => {
+        <button className="with-icon" disabled={busy} onClick={async () => {
           setBusy(true);
           try { await exportBoardPng(); } finally { setBusy(false); }
-        }}>{busy ? '…' : `⭳ ${t('exportPng')}`}</button>
+        }}>
+          {busy ? '…' : <ExportPng className="icon" />}
+          {t('exportPng')}
+        </button>
 
         <input ref={fileRef} type="file" accept="image/*" multiple hidden
           onChange={(e) => void onFiles(e.target.files)} />
@@ -180,12 +228,13 @@ export default function BoardView() {
           <BoardCanvas />
           {els.length === 0 && (
             <div className="board-empty">
-              <div className="be-icon">🖼</div>
+              <div className="be-icon"><AddVision size={40} /></div>
               <h3>{t('emptyBoardTitle')}</h3>
               <p>{t('emptyBoardBody')}</p>
               <button className="primary" onClick={() => fileRef.current?.click()}>
                 {t('emptyBoardCta')}
               </button>
+              <p className="muted small">{t('dropImagesHint')}</p>
             </div>
           )}
           <Minimap />
@@ -193,14 +242,8 @@ export default function BoardView() {
         <Inspector />
       </div>
 
-      {els.length === 0 && (
-        <div className="canvas-empty">
-          Drop images anywhere, or use the toolbar.
-          <br />
-          <span className="muted small">
-            Images become <b>visions</b> — the only elements you can attach goals to.
-          </span>
-        </div>
+      {imgErr && (
+        <div className="canvas-empty" role="alert">{t(imgErr)}</div>
       )}
     </div>
   );

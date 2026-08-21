@@ -27,10 +27,13 @@ drop policy if exists "see own nudges" on public.nudges;
 create policy "see own nudges" on public.nudges
   for select using (auth.uid() = from_id or auth.uid() = to_id);
 
--- only the recipient may mark read
+-- Only the recipient may mark read. Restricting them to the read_at COLUMN
+-- needs a column grant, not a policy — see hardening.sql.
 drop policy if exists "mark nudge read" on public.nudges;
 create policy "mark nudge read" on public.nudges
-  for update using (auth.uid() = to_id);
+  for update
+  using (auth.uid() = to_id)
+  with check (auth.uid() = to_id);
 
 -- sender may withdraw; recipient may dismiss
 drop policy if exists "delete own nudges" on public.nudges;
@@ -130,7 +133,9 @@ as $$
     p.uid,
     pr.display_name,
     bs.updated_at,
-    coalesce(jsonb_array_length(bs.state->'elements'), 0) as visions,
+    (select count(*)::int
+       from jsonb_array_elements(coalesce(bs.state->'elements', '[]'::jsonb)) e
+      where e->>'kind' = 'vision') as visions,
     (select count(*)::int from jsonb_array_elements(coalesce(bs.state->'tasks','[]'::jsonb)) t
        where t->>'date' = to_char(now(), 'YYYY-MM-DD')) as tasks_today,
     (select count(*)::int from jsonb_array_elements(coalesce(bs.state->'tasks','[]'::jsonb)) t

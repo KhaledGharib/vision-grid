@@ -3,6 +3,10 @@ import { useStore } from './store';
 import { useT } from './useT';
 import { LANGS, type Lang } from './i18n';
 import { exportState } from './storage';
+import { dayKey } from './dates';
+import {
+  LogoDiamond, Rename, NewBoard, Help, DownloadJson, SyncCloud, SyncError,
+} from './icons';
 import BoardView from './views/BoardView';
 import MonthView from './views/MonthView';
 import WeekView from './views/WeekView';
@@ -28,10 +32,10 @@ export default function App() {
   const [showAccount, setShowAccount] = useState(false);
   const { status: syncStatus, email } = useSync();
   const boards = useStore((s) => s.boards);
+  const flush = useStore((s) => s.flush);
   const setActiveBoard = useStore((s) => s.setActiveBoard);
   const addBoard = useStore((s) => s.addBoard);
   const renameBoard = useStore((s) => s.renameBoard);
-  const state = useStore();
 
   const active = boards.find((b) => b.isActive);
   const t = useT();
@@ -48,7 +52,10 @@ export default function App() {
   // regaining focus) so a session left open overnight still rolls over.
   useEffect(() => {
     const roll = () => {
-      const today = new Date().toISOString().slice(0, 10);
+      // dayKey() is local time. Using toISOString() here compared a UTC date
+      // against local task dates, so east of UTC the carry-over did not happen
+      // until the UTC date caught up — 04:00 local in UTC+4.
+      const today = dayKey();
       if (localStorage.getItem('vg:rolledOn') === today) return;
       useStore.getState().rollForward();
       localStorage.setItem('vg:rolledOn', today);
@@ -58,17 +65,33 @@ export default function App() {
     return () => window.removeEventListener('focus', roll);
   }, []);
 
+  // Writes during a gesture are coalesced, so make sure the last one lands if
+  // the tab goes away mid-drag.
+  useEffect(() => {
+    const save = () => flush();
+    window.addEventListener('pagehide', save);
+    document.addEventListener('visibilitychange', save);
+    return () => {
+      window.removeEventListener('pagehide', save);
+      document.removeEventListener('visibilitychange', save);
+    };
+  }, [flush]);
+
   const tabLabel: Record<Tab, ReturnType<typeof t>> = {
     board: t('tabBoard'), month: t('tabMonth'), week: t('tabWeek'),
     today: t('tabToday'), archive: t('tabArchive'), circle: t('tabCircle'),
   };
-  const signedIn = syncStatus === 'synced' || syncStatus === 'syncing';
+  const signedIn =
+    syncStatus === 'synced' || syncStatus === 'syncing' || syncStatus === 'error';
 
   return (
     <DirectionProvider dir={lang === 'ar' ? 'rtl' : 'ltr'}>
     <div className="app">
       <div className="topbar">
-        <span className="logo">◈ {t('appName')}</span>
+        <span className="logo">
+          <LogoDiamond className="icon" />
+          {t('appName')}
+        </span>
 
         <div className="tabs">
           {(['board', 'month', 'week', 'today', 'archive', ...(cloudEnabled ? ['circle' as Tab] : [])] as Tab[]).map((id) => (
@@ -84,11 +107,9 @@ export default function App() {
 
         <div className="spacer" />
 
-        <span className="chain-hint">{t('chainHint')}</span>
-
         <div className="board-chip">
           <Select value={active?.id ?? ''} onValueChange={setActiveBoard}>
-            <SelectTrigger className="w-[150px]" title={t('activeBoardTitle')}>
+            <SelectTrigger className="w-[132px]" title={t('activeBoardTitle')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -112,11 +133,12 @@ export default function App() {
                 onOk: (name) => renameBoard(active.id, name),
               })
             }
+            aria-label={t('renameBoard')}
           >
-            ✎
+            <Rename className="icon" />
           </button>
           <button
-            className="ghost"
+            className="ghost with-icon"
             title={t('newBoard')}
             onClick={() =>
               setAsk({
@@ -129,8 +151,10 @@ export default function App() {
                 },
               })
             }
+            aria-label={t('newBoard')}
           >
-            + {t('boardPanel')}
+            <NewBoard className="icon" />
+            {t('boardPanel')}
           </button>
         </div>
 
@@ -140,20 +164,20 @@ export default function App() {
             title={t('account')}
             onClick={() => setShowAccount(true)}
           >
-            {syncStatus === 'synced' ? '☁ ' + t('syncedShort')
-              : syncStatus === 'syncing' ? '↻ ' + t('syncingMsg')
-              : syncStatus === 'error' ? '⚠ ' + t('syncedShort')
+            {syncStatus === 'synced' ? <><SyncCloud className="icon" />{t('syncedShort')}</>
+              : syncStatus === 'syncing' ? <><SyncCloud className="icon spin" />{t('syncingMsg')}</>
+              : syncStatus === 'error' ? <><SyncError className="icon" />{t('syncedShort')}</>
               : t('signIn')}
           </button>
         )}
 
         <Select value={lang} onValueChange={(v) => setLang(v as Lang)}>
-          <SelectTrigger className="w-[132px]" title={t('language')}>
+          <SelectTrigger className="w-[108px]" title={t('language')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {LANGS.map((l) => (
-              <SelectItem key={l.id} value={l.id}>{l.flag} {l.native}</SelectItem>
+              <SelectItem key={l.id} value={l.id}>{l.native}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -162,26 +186,29 @@ export default function App() {
           className="ghost help-btn"
           title={t('howItWorks')}
           onClick={() => setShowGuide(true)}
+          aria-label={t('howItWorks')}
         >
-          ?
+          <Help className="icon" />
         </button>
 
         <button
           className="ghost"
           title={t('exportJson')}
-          onClick={() =>
+          onClick={() => {
+            const s = useStore.getState();
             exportState({
-              version: state.version,
-              user: state.user,
-              boards: state.boards,
-              elements: state.elements,
-              monthGoals: state.monthGoals,
-              weekGoals: state.weekGoals,
-              tasks: state.tasks,
-            })
-          }
+              version: s.version,
+              user: s.user,
+              boards: s.boards,
+              elements: s.elements,
+              monthGoals: s.monthGoals,
+              weekGoals: s.weekGoals,
+              tasks: s.tasks,
+            });
+          }}
+          aria-label={t('exportJson')}
         >
-          ⭳
+          <DownloadJson className="icon" />
         </button>
       </div>
 

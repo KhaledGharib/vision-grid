@@ -69,11 +69,6 @@ export interface BoardElement {
   stroke?: string;
   strokeWidth?: number;
 
-  // draw-only (kind === 'draw') — freehand ink
-  /** Normalised points (0..1 within the element box) so strokes scale on resize. */
-  points?: { x: number; y: number }[];
-  smooth?: boolean;
-
   createdAt: string;
 }
 
@@ -81,8 +76,11 @@ export interface MonthGoal {
   id: string;
   visionId: string;    // -> BoardElement.id where kind === 'vision'
   title: string;
+  /** The month it was PLANNED in. Never advanced — history stays honest. */
   monthKey: string;
   status: GoalStatus;
+  /** When it was closed. Drives "finished this month" independently of monthKey. */
+  completedAt?: string | null;
   droppedReason?: string;
   createdAt: string;
 }
@@ -91,9 +89,11 @@ export interface WeekGoal {
   id: string;
   monthGoalId: string;
   title: string;
+  /** The ISO week it was PLANNED in. Never advanced — history stays honest. */
   weekKey: string;
   status: GoalStatus;
-  carryCount: number;
+  /** When it was closed. Drives "finished this week" independently of weekKey. */
+  completedAt?: string | null;
   droppedReason?: string;
   createdAt: string;
 }
@@ -118,6 +118,12 @@ export interface Task {
 /** After this many roll-forwards the app stops moving it silently and asks. */
 export const POSTPONE_LIMIT = 3;
 
+/**
+ * `postponed` sentinel for "the user said Not now".
+ * It must never roll forward again, and it must never come back into Today.
+ */
+export const POSTPONE_DROPPED = -1;
+
 export interface AppState {
   version: number;
   user: User;
@@ -137,13 +143,19 @@ export const MAX_MITS = 3;
 /** Days with no completed task before a vision starts visibly fading. */
 export const STARVE_AFTER_DAYS = 30;
 
+// ---- Images ----
+/** Reject anything larger than this outright, before it reaches IndexedDB. */
+export const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
+/** Downscale to fit this box. A vision tile is never rendered larger. */
+export const MAX_IMAGE_EDGE = 2048;
+
 // ---- Canvas (infinite) ----
 // No artboard bounds. These only seed where new elements first appear.
 export const SPAWN_W = 1400;
 export const SPAWN_H = 900;
 export const SNAP_TOLERANCE = 6;
-export const MIN_ZOOM = 0.1;
-export const MAX_ZOOM = 4;
+export const MIN_ZOOM = 0.2;
+export const MAX_ZOOM = 3;
 
 /** Arabic-capable font stacks. First entry is the default. */
 export const FONTS = [

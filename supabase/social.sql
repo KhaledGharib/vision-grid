@@ -40,10 +40,18 @@ drop policy if exists "request friendship" on public.friendships;
 create policy "request friendship" on public.friendships
   for insert with check (auth.uid() = a_id);
 
--- only the recipient can accept or decline
+-- Only the recipient can accept or decline.
+--
+-- The WITH CHECK is not decoration: without it the USING expression doubles as
+-- the check, and a check can only see the NEW row. "auth.uid() = b_id" alone
+-- therefore let the recipient rewrite a_id to any account and still pass,
+-- forging an accepted friendship with a stranger. Pinning the columns needs a
+-- column-level grant as well — see hardening.sql.
 drop policy if exists "respond to friendship" on public.friendships;
 create policy "respond to friendship" on public.friendships
-  for update using (auth.uid() = b_id);
+  for update
+  using (auth.uid() = b_id)
+  with check (auth.uid() = b_id and status in ('accepted', 'declined'));
 
 -- either side can unfriend
 drop policy if exists "remove friendship" on public.friendships;

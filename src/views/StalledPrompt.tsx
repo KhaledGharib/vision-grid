@@ -1,4 +1,4 @@
-import { useStore } from '../store';
+import { useStore, useStoreData } from '../store';
 import { useT } from '../useT';
 import { POSTPONE_LIMIT } from '../types';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { Hourglass, X } from 'lucide-react';
  * do it, or it doesn't and it should leave the list. This is that one prompt.
  */
 export default function StalledPrompt() {
+  useStoreData();
   const t = useT();
   const stalled = useStore((s) => s.stalledTasks)();
   const recommit = useStore((s) => s.recommitTask);

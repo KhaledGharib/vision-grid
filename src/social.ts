@@ -57,15 +57,36 @@ function requireCloud() {
   return supabase;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Every id we send to the server is a uuid we were given by the server. Proving
+ * that before interpolating it into a filter expression or a storage path keeps
+ * a malformed value from being read as syntax rather than data.
+ */
+function assertUuid(id: string, what = 'id'): string {
+  if (!UUID_RE.test(id)) throw new Error('invalid_' + what);
+  return id;
+}
+
 // ---------- invite codes ----------
 
-/** Human-friendly code: no O/0/I/1 to avoid transcription mistakes. */
-function makeCode(len = 6) {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+/**
+ * Human-friendly code: no O/0/I/1 to avoid transcription mistakes.
+ *
+ * Uses the CSPRNG, not Math.random(): a code is a bearer credential that grants
+ * read access to the whole board, and V8's PRNG is both predictable from a few
+ * observed outputs and enumerable. The alphabet has 32 symbols, so each
+ * character is exactly 5 bits and a byte can be masked without modulo bias.
+ */
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const CODE_LEN = 8; // 40 bits — too large a space to sweep by guessing
+
+function makeCode(len = CODE_LEN) {
+  const bytes = new Uint8Array(len);
+  crypto.getRandomValues(bytes);
   let out = '';
-  for (let i = 0; i < len; i++) {
-    out += alphabet[Math.floor(Math.random() * alphabet.length)];
-  }
+  for (let i = 0; i < len; i++) out += CODE_ALPHABET[bytes[i] & 31];
   return out;
 }
 
@@ -95,13 +116,23 @@ export async function myInviteCode(): Promise<string | null> {
   throw new Error('could_not_allocate_code');
 }
 
-/** Join someone by their code. Server-side: validates, rejects self, idempotent. */
+/**
+ * Join someone by their code. Server-side: validates, rejects self, idempotent,
+ * and rate limited.
+ *
+ * The RPC reports failure as a status column rather than raising, because a
+ * raised exception would roll back the row that records the failed guess and
+ * the rate limiter would never count past zero. Translate it back into an
+ * Error here so callers keep the same contract.
+ */
 export async function redeemInvite(code: string): Promise<{ friendId: string }> {
   const sb = requireCloud();
   const { data, error } = await sb.rpc('redeem_invite', { p_code: code });
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
-  return { friendId: row?.friend_id as string };
+  const status = (row?.status as string | undefined) ?? 'invalid_or_expired_code';
+  if (status !== 'ok') throw new Error(status);
+  return { friendId: row.friend_id as string };
 }
 
 // ---------- my profile ----------
@@ -147,8 +178,8 @@ export async function listFriends(): Promise<FriendSummary[]> {
 
 /** Full board of one friend — allowed by the "friends read state" policy. */
 export async function fetchFriendBoard(friendId: string): Promise<AppState | null> {
-
   const sb = requireCloud();
+  assertUuid(friendId, 'friend_id');
   const { data, error } = await sb
     .from('boards_state')
     .select('state')
@@ -160,8 +191,8 @@ export async function fetchFriendBoard(friendId: string): Promise<AppState | nul
 
 /** Signed URL for a friend's vision image (bucket is private). */
 export async function friendImageUrl(friendId: string, imageId: string): Promise<string | null> {
-
   if (!cloudEnabled || !supabase) return null;
+  if (!UUID_RE.test(friendId) || /[^A-Za-z0-9_-]/.test(imageId)) return null;
   const { data, error } = await supabase.storage
     .from('visions')
     .createSignedUrl(`${friendId}/${imageId}`, 60 * 60);
@@ -173,6 +204,10 @@ export async function unfriend(friendId: string): Promise<void> {
   const sb = requireCloud();
   const user = await currentUser();
   if (!user) return;
+  // Both ids land inside a PostgREST filter expression, where a stray comma or
+  // paren would be parsed as syntax. Validate before building the string.
+  assertUuid(friendId, 'friend_id');
+  assertUuid(user.id, 'user_id');
   const { error } = await sb
     .from('friendships')
     .delete()
@@ -219,10 +254,17 @@ export async function inbox(): Promise<Nudge[]> {
 
 export async function markNudgeRead(id: string): Promise<void> {
   if (!cloudEnabled || !supabase) return;
-  await supabase.from('nudges').update({ read_at: new Date().toISOString() }).eq('id', id);
+  assertUuid(id, 'nudge_id');
+  const { error } = await supabase
+    .from('nudges')
+    .update({ read_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
 }
 
 export async function dismissNudge(id: string): Promise<void> {
   if (!cloudEnabled || !supabase) return;
-  await supabase.from('nudges').delete().eq('id', id);
+  assertUuid(id, 'nudge_id');
+  const { error } = await supabase.from('nudges').delete().eq('id', id);
+  if (error) throw error;
 }

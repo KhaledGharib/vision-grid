@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useStore } from '../store';
+import { useStore, useStoreData } from '../store';
+import { useT } from '../useT';
+import { Minimap as MinimapIcon } from '../icons';
 import { bounds } from '../canvas';
 import { useImage } from '../hooks/useImage';
 import type { BoardElement } from '../types';
@@ -33,6 +35,8 @@ const PAD = 12;
  * Click to centre there; drag the viewport box to pan.
  */
 export default function Minimap() {
+  useStoreData();
+  const t = useT();
   const els = useStore((s) => s.boardElements)();
   const selection = useStore((s) => s.selection);
   const zoom = useStore((s) => s.zoom);
@@ -122,8 +126,9 @@ export default function Minimap() {
 
   if (!open) {
     return (
-      <button className="minimap-toggle" onClick={() => setOpen(true)} title="Show minimap">
-        🗺
+      <button className="minimap-toggle" onClick={() => setOpen(true)}
+        title={t('showMinimap')} aria-label={t('showMinimap')}>
+        <MinimapIcon className="icon" />
       </button>
     );
   }
@@ -136,11 +141,11 @@ export default function Minimap() {
       className={`minimap${dragging ? ' dragging' : ''}`}
       style={{ width: MAP_W, height: MAP_H, background: board?.bg ?? '#0d0f14' }}
       onPointerDown={onDown}
-      title="Click or drag to navigate"
+      title={t('minimapHint')}
     >
       <button
         className="mm-close"
-        title="Hide minimap"
+        title={t('hideMinimap')}
         onPointerDown={(e) => { e.stopPropagation(); }}
         onClick={(e) => { e.stopPropagation(); setOpen(false); }}
       >

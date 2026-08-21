@@ -8,6 +8,16 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Cross-Origin-Opener-Policy: same-origin
+  # The app renders text the user typed and images the user supplied, and talks
+  # to exactly one API host, so the allowlist can be this narrow:
+  #   img-src blob:  — vision images are served from IndexedDB object URLs
+  #   img-src supabase — signed URLs for a friend's vision images
+  #   style-src 'unsafe-inline' — React writes element styles as attributes
+  #   connect-src wss — Supabase realtime/auth upgrades the connection
+  # frame-ancestors is the modern half of the X-Frame-Options above.
+  Content-Security-Policy: default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://*.supabase.co; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self' blob:; manifest-src 'self'
 
 # Hashed asset filenames are safe to cache hard.
 /assets/*

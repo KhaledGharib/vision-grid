@@ -1,17 +1,17 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import type { AppState, Board, BoardElement, MonthGoal, ShapeKind, Task, Tool, WeekGoal } from './types';
-import { MAX_MITS, MAX_MONTH_GOALS, MAX_WEEK_GOALS, MAX_ZOOM, MIN_ZOOM, POSTPONE_LIMIT, SPAWN_H, SPAWN_W, STARVE_AFTER_DAYS } from './types';
+import { MAX_MITS, MAX_MONTH_GOALS, MAX_WEEK_GOALS, MAX_ZOOM, MIN_ZOOM, POSTPONE_DROPPED, POSTPONE_LIMIT, SPAWN_H, SPAWN_W, STARVE_AFTER_DAYS } from './types';
 import { dayKey, monthKey, weekKey } from './dates';
 import type { Lang } from './i18n';
-import { loadState, saveState, putImage, deleteImage } from './storage';
+import { loadState, saveState, putImage, deleteImage, copyImage, prepareImage } from './storage';
 
 const now = () => new Date().toISOString();
 
 function seed(): AppState {
   const userId = nanoid();
   return {
-    version: 2,
+    version: 3,
     user: { id: userId, handle: 'me', tz: Intl.DateTimeFormat().resolvedOptions().timeZone },
     boards: [
       { id: nanoid(), userId, name: 'Main', visibility: 'private', isActive: true,
@@ -36,7 +36,7 @@ function migrate(raw: any): AppState {
     radius: 12, fit: 'cover' as const, createdAt: v.createdAt ?? now(),
   }));
   return {
-    version: 2,
+    version: 3,
     user: raw.user,
     boards: (raw.boards ?? []).map((b: any) => ({ ...b, bg: b.bg ?? '#0d0f14' })),
     elements,
@@ -95,14 +95,23 @@ interface Store extends AppState {
   boardElements: () => BoardElement[];
 
   // elements
+  /** Rejects with 'not_an_image' or 'image_too_large' so the UI can say why. */
   addVision: (file: File | null, title: string) => Promise<void>;
   addText: (preset?: 'heading' | 'body' | 'quote') => void;
   /** Create a shape from a dragged-out box (world coords). */
   drawShape: (shape: ShapeKind, box: { x: number; y: number; w: number; h: number }) => void;
   updateEl: (id: string, patch: Partial<BoardElement>, history?: boolean) => void;
   updateMany: (patches: Record<string, Partial<BoardElement>>, history?: boolean) => void;
+  /**
+   * Mutation for a gesture in progress: no undo entry, and the write to disk is
+   * coalesced. Pointermove fires at screen rate, and persisting the whole state
+   * document per event pegs the main thread on JSON.stringify.
+   */
+  updateLive: (patches: Record<string, Partial<BoardElement>>) => void;
+  /** Force any coalesced write out now (end of gesture, before unload). */
+  flush: () => void;
   deleteSelected: () => void;
-  duplicateSelected: () => void;
+  duplicateSelected: () => Promise<void>;
   bringForward: (id: string) => void;
   sendBackward: (id: string) => void;
   bringToFront: (id: string) => void;
@@ -151,6 +160,32 @@ interface Store extends AppState {
   visionStarvation: (visionId: string) => number;
 }
 
+/**
+ * Subscribe a component to the data the derived getters read.
+ *
+ * The getters on this store are plain functions hanging off an object that
+ * `set` shallow-merges, so their identity never changes. That makes
+ *
+ *     const tasks = useStore((s) => s.todayTasks)();
+ *
+ * a subscription to the FUNCTION, not to the tasks behind it — zustand compares
+ * the selector result, sees the same function, and skips the re-render. Every
+ * component written that way only refreshed when some unrelated subscription
+ * (local state, selection, zoom) happened to fire, so an edit made anywhere
+ * else left it showing stale values: editing text on the canvas did not update
+ * the inspector, and adding a goal only appeared to work because the form reset
+ * its own local state at the same moment.
+ *
+ * Call this once in any component that reads derived state.
+ */
+export function useStoreData(): void {
+  useStore((s) => s.boards);
+  useStore((s) => s.elements);
+  useStore((s) => s.monthGoals);
+  useStore((s) => s.weekGoals);
+  useStore((s) => s.tasks);
+}
+
 const snap = (s: AppState): Snapshot => ({
   boards: s.boards, elements: s.elements, monthGoals: s.monthGoals,
   weekGoals: s.weekGoals, tasks: s.tasks,
@@ -165,6 +200,26 @@ export const useStore = create<Store>((set, get) => {
       version: 3, user: s.user, boards: s.boards, elements: s.elements,
       monthGoals: s.monthGoals, weekGoals: s.weekGoals, tasks: s.tasks,
     });
+  };
+
+  let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Coalesce writes during a continuous gesture. */
+  const persistSoon = () => {
+    if (persistTimer) clearTimeout(persistTimer);
+    persistTimer = setTimeout(() => {
+      persistTimer = null;
+      persistNow();
+    }, 350);
+  };
+
+  /** Write immediately, cancelling anything pending. */
+  const persistNow = () => {
+    if (persistTimer) {
+      clearTimeout(persistTimer);
+      persistTimer = null;
+    }
+    persist();
   };
 
   /** push current state onto undo stack before a mutation */
@@ -229,7 +284,7 @@ export const useStore = create<Store>((set, get) => {
         future: [snap(s), ...s.future.slice(0, 49)],
         selection: [],
       });
-      persist();
+      persistNow();
     },
 
     redo: () => {
@@ -242,7 +297,7 @@ export const useStore = create<Store>((set, get) => {
         future: s.future.slice(1),
         selection: [],
       });
-      persist();
+      persistNow();
     },
 
     select: (ids) => set({ selection: ids }),
@@ -305,7 +360,7 @@ export const useStore = create<Store>((set, get) => {
         past: [],
         future: [],
       });
-      persist();
+      persistNow();
     },
 
     addBoard: (name) => {
@@ -322,7 +377,7 @@ export const useStore = create<Store>((set, get) => {
         selection: [],
         panX: 0, panY: 0, zoom: 1,
       }));
-      persist();
+      persistNow();
       return id;
     },
     renameBoard: (id, name) => {
@@ -332,12 +387,12 @@ export const useStore = create<Store>((set, get) => {
       set((s) => ({
         boards: s.boards.map((b) => (b.id === id ? { ...b, name: clean } : b)),
       }));
-      persist();
+      persistNow();
     },
 
     setActiveBoard: (id) => {
       set((s) => ({ boards: s.boards.map((b) => ({ ...b, isActive: b.id === id })), selection: [] }));
-      persist();
+      persistNow();
     },
     deleteBoard: (id) => {
       const s = get();
@@ -357,12 +412,12 @@ export const useStore = create<Store>((set, get) => {
         tasks: s.tasks.filter((t) => !wgIds.includes(t.weekGoalId)),
         selection: [],
       });
-      persist();
+      persistNow();
     },
     setBoardBg: (color) => {
       push();
       set((s) => ({ boards: s.boards.map((b) => (b.isActive ? { ...b, bg: color } : b)) }));
-      persist();
+      persistNow();
     },
     activeBoard: () => get().boards.find((b) => b.isActive),
     boardElements: () => {
@@ -375,8 +430,11 @@ export const useStore = create<Store>((set, get) => {
       if (!get().activeBoard()) return;
       let imageId: string | null = null;
       if (file) {
+        // Throws on a non-image or an oversized file, before any state changes,
+        // so a rejected pick leaves the board exactly as it was.
+        const blob = await prepareImage(file);
         imageId = nanoid();
-        await putImage(imageId, file);
+        await putImage(imageId, blob);
       }
       push();
       const n = get().boardElements().filter((e) => e.kind === 'vision').length;
@@ -388,7 +446,7 @@ export const useStore = create<Store>((set, get) => {
         radius: 14, fit: 'cover',
       };
       set((s) => ({ elements: [...s.elements, el], selection: [el.id] }));
-      persist();
+      persistNow();
     },
 
     addText: (preset = 'body') => {
@@ -407,7 +465,7 @@ export const useStore = create<Store>((set, get) => {
         color: '#e6e9ef', align: 'left', italic: preset === 'quote',
       };
       set((s) => ({ elements: [...s.elements, el], selection: [el.id] }));
-      persist();
+      persistNow();
     },
 
     drawShape: (shape, box) => {
@@ -425,13 +483,13 @@ export const useStore = create<Store>((set, get) => {
         radius: 10,
       };
       set((st) => ({ elements: [...st.elements, el], selection: [el.id], tool: 'select' }));
-      persist();
+      persistNow();
     },
 
     updateEl: (id, patch, history = true) => {
       if (history) push();
       set((s) => ({ elements: s.elements.map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
-      persist();
+      persistNow();
     },
 
     updateMany: (patches, history = true) => {
@@ -439,12 +497,24 @@ export const useStore = create<Store>((set, get) => {
       set((s) => ({
         elements: s.elements.map((e) => (patches[e.id] ? { ...e, ...patches[e.id] } : e)),
       }));
-      persist();
+      persistNow();
     },
+
+    updateLive: (patches) => {
+      set((s) => ({
+        elements: s.elements.map((e) => (patches[e.id] ? { ...e, ...patches[e.id] } : e)),
+      }));
+      persistSoon();
+    },
+
+    flush: () => persistNow(),
 
     deleteSelected: () => {
       const s = get();
-      const ids = s.selection.filter((id) => !s.elements.find((e) => e.id === id)?.locked);
+      const ids = s.selection.filter((id) => {
+        const el = s.elements.find((e) => e.id === id);
+        return el !== undefined && !el.locked;
+      });
       if (!ids.length) return;
       push();
       ids.forEach((id) => {
@@ -460,18 +530,34 @@ export const useStore = create<Store>((set, get) => {
         tasks: s.tasks.filter((t) => !wgIds.includes(t.weekGoalId)),
         selection: [],
       });
-      persist();
+      persistNow();
     },
 
-    duplicateSelected: () => {
+    duplicateSelected: async () => {
       const s = get();
       if (!s.selection.length) return;
+      const originals = s.elements.filter((e) => s.selection.includes(e.id));
+
+      // Each copy gets its OWN blob. Sharing an imageId meant deleting either
+      // copy deleted the picture out from under the other one.
+      const copies: BoardElement[] = [];
+      for (const e of originals) {
+        const clone: BoardElement = { ...e, id: nanoid(), x: e.x + 24, y: e.y + 24, createdAt: now() };
+        if (e.kind === 'vision' && e.imageId) {
+          const imageId = nanoid();
+          clone.imageId = (await copyImage(e.imageId, imageId)) ? imageId : null;
+        }
+        copies.push(clone);
+      }
+
       push();
-      const copies = s.elements
-        .filter((e) => s.selection.includes(e.id))
-        .map((e, i) => ({ ...e, id: nanoid(), x: e.x + 24, y: e.y + 24, z: nextZ() + i, createdAt: now() }));
-      set({ elements: [...s.elements, ...copies], selection: copies.map((c) => c.id) });
-      persist();
+      const base = nextZ();
+      const placed = copies.map((c, i) => ({ ...c, z: base + i }));
+      set((st) => ({
+        elements: [...st.elements, ...placed],
+        selection: placed.map((c) => c.id),
+      }));
+      persistNow();
     },
 
     bringForward: (id) => {
@@ -482,7 +568,7 @@ export const useStore = create<Store>((set, get) => {
       const a = els[i], b = els[i + 1];
       set((s) => ({ elements: s.elements.map((e) =>
         e.id === a.id ? { ...e, z: b.z } : e.id === b.id ? { ...e, z: a.z } : e) }));
-      persist();
+      persistNow();
     },
     sendBackward: (id) => {
       const els = get().boardElements();
@@ -492,7 +578,7 @@ export const useStore = create<Store>((set, get) => {
       const a = els[i], b = els[i - 1];
       set((s) => ({ elements: s.elements.map((e) =>
         e.id === a.id ? { ...e, z: b.z } : e.id === b.id ? { ...e, z: a.z } : e) }));
-      persist();
+      persistNow();
     },
     bringToFront: (id) => { push(); get().updateEl(id, { z: nextZ() }, false); },
     sendToBack: (id) => {
@@ -531,7 +617,7 @@ export const useStore = create<Store>((set, get) => {
       const g: MonthGoal = { id: nanoid(), visionId, title: title.trim(),
         monthKey: monthKey(), status: 'active', createdAt: now() };
       set((s) => ({ monthGoals: [...s.monthGoals, g] }));
-      persist();
+      persistNow();
       return g.id;
     },
     addWeekGoal: (monthGoalId, title) => {
@@ -539,36 +625,44 @@ export const useStore = create<Store>((set, get) => {
       if (get().currentWeekGoals().length >= MAX_WEEK_GOALS) return null;
       push();
       const w: WeekGoal = { id: nanoid(), monthGoalId, title: title.trim(),
-        weekKey: weekKey(), status: 'active', carryCount: 0, createdAt: now() };
+        weekKey: weekKey(), status: 'active', createdAt: now() };
       set((s) => ({ weekGoals: [...s.weekGoals, w] }));
-      persist();
+      persistNow();
       return w.id;
     },
-    addTask: (weekGoalId, title, date) => {
+    addTask: (weekGoalId, title, date, isMit = false) => {
       if (!weekGoalId || !title.trim()) return null;
+      const s = get();
+      const day = date || dayKey();
+      // Starring on creation still has to respect the MIT cap for that day.
+      const mitFull = s.tasks.filter((x) => x.date === day && x.isMit).length >= MAX_MITS;
       push();
       const t: Task = { id: nanoid(), weekGoalId, title: title.trim(),
-        date: date ?? dayKey(), isMit: false, done: false, minutesSpent: 0, createdAt: now() };
-      set((s) => ({ tasks: [...s.tasks, t] }));
-      persist();
+        date: day, isMit: isMit && !mitFull, done: false, minutesSpent: 0, createdAt: now() };
+      set((st) => ({ tasks: [...st.tasks, t] }));
+      persistNow();
       return t.id;
     },
     toggleTask: (id) => {
+      // undo() restores the tasks array, so a task change that skipped the undo
+      // stack would be silently reverted by the next Ctrl+Z.
+      push();
       set((s) => ({
         tasks: s.tasks.map((t) =>
           t.id === id
             ? { ...t, done: !t.done, completedAt: !t.done ? now() : null }
             : t),
       }));
-      persist();
+      persistNow();
     },
     toggleMit: (id) => {
       const s = get();
       const t = s.tasks.find((x) => x.id === id);
       if (!t) return;
       if (!t.isMit && s.todayTasks().filter((x) => x.isMit).length >= MAX_MITS) return;
+      push();
       set({ tasks: s.tasks.map((x) => (x.id === id ? { ...x, isMit: !x.isMit } : x)) });
-      persist();
+      persistNow();
     },
     deleteMonthGoal: (id) => {
       const s = get();
@@ -579,7 +673,7 @@ export const useStore = create<Store>((set, get) => {
         weekGoals: s.weekGoals.filter((w) => w.monthGoalId !== id),
         tasks: s.tasks.filter((t) => !wgIds.includes(t.weekGoalId)),
       });
-      persist();
+      persistNow();
     },
     deleteWeekGoal: (id) => {
       push();
@@ -587,27 +681,28 @@ export const useStore = create<Store>((set, get) => {
         weekGoals: s.weekGoals.filter((w) => w.id !== id),
         tasks: s.tasks.filter((t) => t.weekGoalId !== id),
       }));
-      persist();
+      persistNow();
     },
     deleteTask: (id) => {
       push();
       set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }));
-      persist();
+      persistNow();
     },
 
     // ---------- derived ----------
     visions: () => get().boardElements().filter((e) => e.kind === 'vision'),
     completeMonthGoal: (id) => {
       push();
+      const at = now();
       set((s) => ({
         monthGoals: s.monthGoals.map((g) =>
-          g.id === id ? { ...g, status: 'done' as const } : g),
+          g.id === id ? { ...g, status: 'done' as const, completedAt: at } : g),
         // week goals under it retire with it, or they'd dangle in the week view
         weekGoals: s.weekGoals.map((w) =>
           w.monthGoalId === id && w.status === 'active'
-            ? { ...w, status: 'done' as const } : w),
+            ? { ...w, status: 'done' as const, completedAt: at } : w),
       }));
-      persist();
+      persistNow();
     },
     reopenMonthGoal: (id) => {
       // Reopening must respect the cap — otherwise close-then-reopen is a
@@ -616,38 +711,45 @@ export const useStore = create<Store>((set, get) => {
       push();
       set((s) => ({
         monthGoals: s.monthGoals.map((g) =>
-          g.id === id ? { ...g, status: 'active' as const } : g),
+          g.id === id ? { ...g, status: 'active' as const, completedAt: null } : g),
       }));
-      persist();
+      persistNow();
     },
     completeWeekGoal: (id) => {
       push();
+      const at = now();
       set((s) => ({
         weekGoals: s.weekGoals.map((w) =>
-          w.id === id ? { ...w, status: 'done' as const } : w),
+          w.id === id ? { ...w, status: 'done' as const, completedAt: at } : w),
       }));
-      persist();
+      persistNow();
     },
     reopenWeekGoal: (id) => {
       if (get().currentWeekGoals().length >= MAX_WEEK_GOALS) return;
       push();
       set((s) => ({
         weekGoals: s.weekGoals.map((w) =>
-          w.id === id ? { ...w, status: 'active' as const } : w),
+          w.id === id ? { ...w, status: 'active' as const, completedAt: null } : w),
       }));
-      persist();
+      persistNow();
     },
     doneMonthGoals: () => {
       const s = get();
-      const ids = s.visions().map((v) => v.id);
+      const ids = new Set(s.visions().map((v) => v.id));
       const mk = monthKey();
-      return s.monthGoals.filter(
-        (g) => g.monthKey === mk && g.status === 'done' && ids.includes(g.visionId));
+      // A goal planned in August and closed in September belongs in September's
+      // "finished" list. monthKey is the plan month, so it cannot answer this.
+      // Rows written before completedAt existed fall back to it.
+      return s.monthGoals.filter((g) =>
+        g.status === 'done' && ids.has(g.visionId) &&
+        (g.completedAt ? monthKey(new Date(g.completedAt)) : g.monthKey) === mk);
     },
     doneWeekGoals: () => {
       const s = get();
       const wk = weekKey();
-      return s.weekGoals.filter((w) => w.weekKey === wk && w.status === 'done');
+      return s.weekGoals.filter((w) =>
+        w.status === 'done' &&
+        (w.completedAt ? weekKey(new Date(w.completedAt)) : w.weekKey) === wk);
     },
     monthGoalAllDone: (id) => {
       const s = get();
@@ -665,11 +767,15 @@ export const useStore = create<Store>((set, get) => {
     rollForward: () => {
       const today = dayKey();
       const s = get();
-      // Only tasks under a still-active week goal are worth carrying; anything
-      // else belongs to a closed chain and should stay in history.
-      const liveWgIds = new Set(s.weekGoals.filter((w) => w.status === 'active').map((w) => w.id));
+      // Only tasks under a goal the user can still see are worth carrying;
+      // anything else belongs to a closed chain and stays in history.
+      const liveWgIds = new Set(s.currentWeekGoals().map((w) => w.id));
       const stale = s.tasks.filter(
         (t) => !t.done && t.date < today && liveWgIds.has(t.weekGoalId)
+          // "Not now" is a decision, not a pause. Without this check the drop
+          // sentinel (-1) satisfied "< POSTPONE_LIMIT" and the task came back
+          // tomorrow with its counter reset, restarting the whole cycle.
+          && t.postponed !== POSTPONE_DROPPED
           && (t.postponed ?? 0) < POSTPONE_LIMIT,
       );
       if (stale.length === 0) return 0;
@@ -685,16 +791,20 @@ export const useStore = create<Store>((set, get) => {
               }
             : t),
       }));
-      persist();
+      persistNow();
       return stale.length;
     },
 
     stalledTasks: () => {
       const s = get();
       const today = dayKey();
-      const liveWgIds = new Set(s.weekGoals.filter((w) => w.status === 'active').map((w) => w.id));
+      // The same live set Today uses. Using a looser filter here meant "Do it
+      // today" could move a task into a week that Today does not render, so the
+      // button appeared to do nothing.
+      const liveWgIds = new Set(s.currentWeekGoals().map((w) => w.id));
       return s.tasks.filter(
         (t) => !t.done && liveWgIds.has(t.weekGoalId)
+          && t.postponed !== POSTPONE_DROPPED
           && (t.postponed ?? 0) >= POSTPONE_LIMIT && t.date <= today,
       );
     },
@@ -703,9 +813,11 @@ export const useStore = create<Store>((set, get) => {
       push();
       set((s) => ({
         tasks: s.tasks.map((t) =>
-          t.id === id ? { ...t, date: t.originalDate ?? t.date, postponed: -1 } : t),
+          t.id === id
+            ? { ...t, date: t.originalDate ?? t.date, postponed: POSTPONE_DROPPED }
+            : t),
       }));
-      persist();
+      persistNow();
     },
 
     recommitTask: (id) => {
@@ -714,29 +826,37 @@ export const useStore = create<Store>((set, get) => {
         tasks: s.tasks.map((t) =>
           t.id === id ? { ...t, date: dayKey(), postponed: 0 } : t),
       }));
-      persist();
+      persistNow();
     },
 
     currentMonthGoals: () => {
       const s = get();
-      const ids = s.visions().map((v) => v.id);
+      const ids = new Set(s.visions().map((v) => v.id));
       const mk = monthKey();
-      return s.monthGoals.filter((g) => g.monthKey === mk && g.status === 'active' && ids.includes(g.visionId));
+      // An OPEN goal, not "a goal stamped with this month". Matching monthKey
+      // exactly meant every active goal disappeared at midnight on the 1st, and
+      // because Week and Today derive from this, all three views emptied at
+      // once — mid-week, if the ISO week straddled the boundary.
+      return s.monthGoals.filter(
+        (g) => g.status === 'active' && g.monthKey <= mk && ids.has(g.visionId));
     },
     currentWeekGoals: () => {
       const s = get();
-      const mgIds = s.currentMonthGoals().map((g) => g.id);
+      const mgIds = new Set(s.currentMonthGoals().map((g) => g.id));
       const wk = weekKey();
-      return s.weekGoals.filter((w) => w.weekKey === wk && w.status === 'active' && mgIds.includes(w.monthGoalId));
+      // Same rule one level down: still open means still shown. Keys are
+      // zero-padded and year-first, so a plain string compare orders them.
+      return s.weekGoals.filter(
+        (w) => w.status === 'active' && w.weekKey <= wk && mgIds.has(w.monthGoalId));
     },
     todayTasks: () => {
       const s = get();
-      const wgIds = s.currentWeekGoals().map((w) => w.id);
+      const wgIds = new Set(s.currentWeekGoals().map((w) => w.id));
       const d = dayKey();
-      // postponed === -1 means "dropped": it stays in history but is no longer
-      // asked about, so it must not come back into Today.
+      // A dropped task stays in history but is never asked about again, so it
+      // must not come back into Today.
       return s.tasks.filter(
-        (t) => t.date === d && wgIds.includes(t.weekGoalId) && t.postponed !== -1);
+        (t) => t.date === d && wgIds.has(t.weekGoalId) && t.postponed !== POSTPONE_DROPPED);
     },
     visionForTask: (t) => {
       const s = get();

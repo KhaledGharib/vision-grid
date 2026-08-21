@@ -111,7 +111,13 @@ export default function ArchiveView() {
                   // goal is ticked it counts as finished even when it was never
                   // explicitly closed.
                   const finished = g.status === 'done' || allDone;
-                  const abandoned = !finished && gt.length > 0 && !isNow;
+                  // An ACTIVE goal has not been abandoned, whichever month it
+                  // was planned in: open goals carry forward now, so a past
+                  // bucket can still hold live work. Keying this off "not the
+                  // current month" would badge a goal as unfinished here while
+                  // the Month tab is still showing it as open.
+                  const carried = g.status === 'active' && !isNow;
+                  const abandoned = !finished && gt.length > 0 && g.status !== 'active';
                   return (
                     <div
                       key={g.id}
@@ -144,6 +150,9 @@ export default function ArchiveView() {
                           </div>
                         </div>
                         {abandoned && <Badge variant="danger">{t('unfinished')}</Badge>}
+                        {carried && !finished && (
+                          <Badge variant="accent" title={t('carriedTitle')}>{t('stillOpen')}</Badge>
+                        )}
                       </div>
 
                       {wgs.map((w) => {

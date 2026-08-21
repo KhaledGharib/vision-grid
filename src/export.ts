@@ -1,9 +1,9 @@
 // Board -> PNG. Renders elements onto a 2D canvas (no external dependency).
 
 import { useStore } from './store';
-import { bounds } from './canvas';
+import { visualBounds } from './canvas';
 import { FONTS, isRtlText } from './types';
-import { imageUrl } from './storage';
+import { imageUrl, triggerDownload } from './storage';
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   const rr = Math.min(r, w / 2, h / 2);
@@ -31,8 +31,13 @@ export async function exportBoardPng(scale = 2) {
   const els = s.boardElements();
   if (!board) return;
 
-  // Infinite canvas: crop to the content bounding box with padding.
-  const bb = bounds(els);
+  // Fonts must be resolved before the first measureText/fillText, or a cold
+  // load exports in a fallback face — obvious with the Arabic stacks.
+  await document.fonts?.ready;
+
+  // Infinite canvas: crop to the content bounding box with padding. visualBounds,
+  // not bounds: a rotated element extends past its own x/y/w/h.
+  const bb = visualBounds(els);
   if (!bb) return;
   const pad = 48;
   const W = bb.w + pad * 2;
@@ -118,22 +123,33 @@ export async function exportBoardPng(scale = 2) {
       ctx.textAlign = align === 'center' ? 'center' : align === 'right' ? 'right' : 'left';
       const tx = align === 'center' ? e.w / 2 : align === 'right' ? e.w : 0;
 
-      // naive word wrap
-      const words = (e.text ?? '').split(/\s+/);
+      // Word wrap INSIDE each hard line. Splitting the whole string on \s+
+      // swallowed explicit newlines, so a multi-line text element exported as
+      // one run-on paragraph.
       const lh = (e.fontSize ?? 22) * 1.25;
-      let line = '';
       let y = 0;
-      for (const word of words) {
-        const test = line ? `${line} ${word}` : word;
-        if (ctx.measureText(test).width > e.w && line) {
+      for (const para of (e.text ?? '').split(/\r?\n/)) {
+        const words = para.split(/ +/).filter(Boolean);
+        if (!words.length) {
+          y += lh; // preserve a deliberate blank line
+          continue;
+        }
+        let line = '';
+        for (const word of words) {
+          const test = line ? `${line} ${word}` : word;
+          if (ctx.measureText(test).width > e.w && line) {
+            ctx.fillText(line, tx, y);
+            line = word;
+            y += lh;
+          } else {
+            line = test;
+          }
+        }
+        if (line) {
           ctx.fillText(line, tx, y);
-          line = word;
           y += lh;
-        } else {
-          line = test;
         }
       }
-      if (line) ctx.fillText(line, tx, y);
     }
 
     ctx.restore();
@@ -141,13 +157,12 @@ export async function exportBoardPng(scale = 2) {
 
   await new Promise<void>((resolve) => {
     cv.toBlob((blob) => {
+      // triggerDownload defers revoking the object URL. Revoking it inline,
+      // right after click(), can cancel a large PNG before it starts.
       if (blob) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${board.name.replace(/\s+/g, '-').toLowerCase()}-board.png`;
-        a.click();
-        URL.revokeObjectURL(url);
+        const stem = board.name.replace(/[^\p{L}\p{N}_-]+/gu, '-')
+          .replace(/^-+|-+$/g, '').toLowerCase() || 'board';
+        triggerDownload(blob, `${stem}-board.png`);
       }
       resolve();
     }, 'image/png');

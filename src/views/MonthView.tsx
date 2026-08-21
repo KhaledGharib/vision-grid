@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore } from '../store';
+import { useStore, useStoreData } from '../store';
 import { MAX_MONTH_GOALS } from '../types';
 import { monthKey, monthLabel } from '../dates';
 import { Coach, Example } from './Coach';
@@ -34,6 +34,7 @@ function GoalThumb({ el }: { el?: BoardElement }) {
 }
 
 export default function MonthView() {
+  useStoreData();
   const myVisions = useStore((s) => s.visions)();
   const allEls = useStore((s) => s.elements);
   const addMonthGoal = useStore((s) => s.addMonthGoal);
@@ -91,12 +92,20 @@ export default function MonthView() {
           {goals.map((g) => {
             const v = allEls.find((x) => x.id === g.visionId);
             const wks = weekGoals.filter((w) => w.monthGoalId === g.id);
+            const carried = g.monthKey !== monthKey();
             return (
               <Card className="mb-3.5" key={g.id}>
                 <div className="flex items-center gap-3">
                   <GoalThumb el={v} />
                   <div className="min-w-0 flex-1">
-                    <div className="mb-1 text-[15px]">{g.title}</div>
+                    <div className="mb-1 flex flex-wrap items-center gap-2 text-[15px]">
+                      {g.title}
+                      {carried && (
+                        <Badge variant="accent" title={t('carriedTitle')}>
+                          {t('carriedFromMonth', { m: monthLabel(g.monthKey, t.lang) })}
+                        </Badge>
+                      )}
+                    </div>
                     <div className="text-[12.5px] text-[#8b93a4]">
                       {t('serves')} <b className="text-[#e6e9ef]">{v?.title ?? '—'}</b> · {wks.length} {t('weekGoalCount')}
                     </div>

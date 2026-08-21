@@ -13,7 +13,10 @@ export const TaskCheck = React.forwardRef<
     role="checkbox"
     aria-checked={checked}
     className={cn(
-      'grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border transition-colors',
+      // btn-reset opts out of the legacy button rule in index.css, which would
+      // otherwise force padding and a 10px radius onto this and stretch the
+      // circle into a 26×22 rounded rectangle.
+      'btn-reset grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border transition-colors',
       checked
         ? 'border-[#34d399] bg-[#34d399] text-[#0d0f14]'
         : 'border-[#39424f] bg-transparent hover:border-[#8b93a4]',

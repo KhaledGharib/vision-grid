@@ -32,7 +32,7 @@ create policy "insert own profile" on public.profiles
 
 drop policy if exists "update own profile" on public.profiles;
 create policy "update own profile" on public.profiles
-  for update using (auth.uid() = id);
+  for update using (auth.uid() = id) with check (auth.uid() = id);
 
 -- Create the profile row automatically on signup.
 create or replace function public.handle_new_user()

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { BoardElement } from '../types';
 import { FONTS, isRtlText } from '../types';
 import { useT } from '../useT';
+import { AddVision, Lock, ZoomIn, ZoomOut } from '../icons';
 
 /**
  * A friend's canvas, rendered read-only.
@@ -194,7 +195,7 @@ export default function ReadOnlyCanvas({
                         }}
                       />
                     ) : (
-                      <div className="el-noimg">🎯</div>
+                      <div className="el-noimg"><AddVision size={34} /></div>
                     )}
                     {prog && prog.total > 0 && <div className="el-ring"><Ring pct={pct} /></div>}
                     {st >= 1 && <div className="starved-badge">{t('starving')}</div>}
@@ -242,13 +243,22 @@ export default function ReadOnlyCanvas({
           })}
         </div>
 
-        <div className="ro-badge">🔒 {t('readOnlyBoard')}</div>
+        <div className="ro-badge with-icon">
+          <Lock className="icon" />
+          {t('readOnlyBoard')}
+        </div>
       </div>
 
       <div className="zoomer ro-zoom">
-        <button onClick={() => setZoom((z) => Math.max(0.1, z / 1.2))}>−</button>
+        <button onClick={() => setZoom((z) => Math.max(0.1, z / 1.2))}
+          title={t('zoomOut')} aria-label={t('zoomOut')}>
+          <ZoomOut className="icon" />
+        </button>
         <span>{Math.round(zoom * 100)}%</span>
-        <button onClick={() => setZoom((z) => Math.min(4, z * 1.2))}>+</button>
+        <button onClick={() => setZoom((z) => Math.min(4, z * 1.2))}
+          title={t('zoomIn')} aria-label={t('zoomIn')}>
+          <ZoomIn className="icon" />
+        </button>
       </div>
     </div>
   );

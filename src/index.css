@@ -96,11 +96,53 @@ input[type=range] { padding: 0; }
 
 /* ---- top bar ---- */
 .topbar {
-  display: flex; align-items: center; gap: 14px; padding: 10px 16px;
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px;
   background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0;
 }
 
-.logo { font-weight: 700; letter-spacing: -.3px; color: var(--accent); white-space: nowrap; }
+.logo { font-weight: 700; letter-spacing: -.3px; color: var(--accent); white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 7px; }
+
+/* ================= icons =================
+   The set in src/icons.tsx. Every icon inherits currentColor, so a button's
+   hover/disabled/active colour tints the icon with it — the emoji and Unicode
+   glyphs these replaced could not do that. */
+
+.icon { width: 16px; height: 16px; flex: none; }
+
+/* A control that pairs an icon with a text label. */
+.with-icon { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Icon-only controls: centre the glyph in the button box. */
+.board-toolbar button:not(.with-icon):not(.zoom-val),
+.btn-grid button,
+.btn-row button,
+.zoomer button:not(.zoom-val),
+.minimap-toggle,
+.mm-close { display: inline-flex; align-items: center; justify-content: center; }
+
+.btn-grid .icon, .btn-row .icon { width: 17px; height: 17px; }
+.logo .icon { width: 18px; height: 18px; }
+
+/* Icon-only controls: the legacy button padding is sized for text labels, so
+   an icon alone sat in a wide pill. Square it off. */
+.topbar button:not(.with-icon):has(> svg:only-child),
+.board-toolbar button:not(.with-icon):has(> svg:only-child),
+.zoomer button:has(> svg:only-child) { padding: 7px; }
+
+/* An icon for a LOGICAL direction (text start/end) mirrors with the script.
+   Icons for GEOMETRIC operations — the multi-select align row, which moves
+   absolute x/y on an intentionally LTR canvas — must NOT get this class. */
+[dir='rtl'] .icon-logical { transform: scaleX(-1); }
+
+
+/* The sync chip spins its cloud while a push is in flight. */
+@keyframes vg-spin { to { transform: rotate(360deg); } }
+.icon.spin { animation: vg-spin 1.4s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .icon.spin { animation: none; }
+}
 
 .tabs { display: flex; gap: 4px; }
 
@@ -110,8 +152,6 @@ input[type=range] { padding: 0; }
 .tab.active { background: var(--panel-2); color: var(--text); border-color: var(--border); }
 
 .spacer { flex: 1; }
-
-.chain-hint { font-size: 12px; color: var(--muted); }
 
 .view { flex: 1; overflow: auto; padding: 20px 24px; }
 
@@ -241,7 +281,7 @@ input[type=range] { padding: 0; }
 .el-vision img { width: 100%; height: 100%; display: block; }
 
 .el-noimg { width: 100%; height: 100%; display: grid; place-items: center;
-  font-size: 34px; background: var(--panel-2); color: var(--muted); }
+  background: var(--panel-2); color: var(--muted); opacity: .8; }
 
 .el-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 7px 9px;
   background: rgba(0,0,0,.62); backdrop-filter: blur(4px);
@@ -273,7 +313,7 @@ input[type=range] { padding: 0; }
 }
 
 .rot-handle::after { content: ''; position: absolute; left: 50%; top: 13px;
-  width: 1px; height: 29px; background: var(--accent); }
+  width: 1px; height: 29px; background: var(--accent); pointer-events: none; }
 
 .guide { position: absolute; background: #ff4d6d; z-index: 9999; pointer-events: none; }
 
@@ -322,7 +362,8 @@ input[type=range] { padding: 0; }
 
 .layer:hover { background: var(--panel-2); }
 
-.layer-ico { width: 16px; color: var(--muted); }
+.layer-ico { width: 16px; height: 16px; flex: none; color: var(--muted);
+  display: inline-flex; align-items: center; justify-content: center; }
 
 .layer-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -472,7 +513,8 @@ html[dir='rtl'] .inspector { text-align: right; }
 
 .board-empty > * { pointer-events: auto; }
 
-.be-icon { font-size: 44px; opacity: .5; margin-bottom: 6px; }
+.be-icon { opacity: .5; margin-bottom: 6px; color: var(--muted);
+  display: flex; justify-content: center; }
 
 .board-empty h3 { margin: 0; font-size: 19px; }
 
@@ -494,7 +536,9 @@ button.danger { background: var(--red); border-color: var(--red); color: #2b0b0b
 button.danger:hover { filter: brightness(1.1); }
 
 /* ================= cloud sync ================= */
-.sync-chip { font-size: 12px; padding: 5px 10px; white-space: nowrap; }
+.sync-chip { font-size: 12px; padding: 5px 10px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px; }
+.sync-chip .icon { width: 14px; height: 14px; }
 
 .sync-chip.synced { color: var(--green); border-color: rgba(52,211,153,.35); }
 
@@ -584,11 +628,6 @@ button.danger.ghost { color: var(--red); border-color: rgba(248,113,113,.35); ba
 /* --- unread nudges: loud, top of page --- */
 .nudge-stack { display: flex; flex-direction: column; gap: 8px; margin-bottom: 22px; }
 
-  0%,60%,100% { transform: rotate(0deg); }
-
-  70% { transform: rotate(16deg); }
- 80% { transform: rotate(-8deg); }
-
 /* --- friends as cards, not rows --- */
 .friend-grid {
   /* auto-FIT, not auto-fill: auto-fill keeps empty phantom tracks so the cards
@@ -655,11 +694,6 @@ button.danger.ghost { color: var(--red); border-color: rgba(248,113,113,.35); ba
 .topbar { flex-wrap: wrap; row-gap: 8px; }
 .topbar > * { min-width: 0; }
 .tabs { flex-wrap: wrap; }
-
-/* the hierarchy hint is decoration — first thing to go when space is tight */
-@media (max-width: 1100px) {
-  .chain-hint { display: none; }
-}
 
 @media (max-width: 900px) {
   .topbar { gap: 8px; padding: 8px 12px; }

@@ -117,7 +117,8 @@ export default function CircleView({ signedIn }: { signedIn: boolean }) {
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
       setErr(/invalid_or_expired/.test(m) ? t('codeInvalid')
-        : /cannot_pair_with_self/.test(m) ? t('codeIsYours') : m);
+        : /cannot_pair_with_self/.test(m) ? t('codeIsYours')
+        : /too_many_attempts/.test(m) ? t('codeThrottled') : m);
     } finally { setBusy(false); }
   };
 

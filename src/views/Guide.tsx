@@ -1,4 +1,4 @@
-import { useStore } from '../store';
+import { useStore, useStoreData } from '../store';
 import { useT } from '../useT';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -15,6 +15,7 @@ const KEY = 'vg:guide:seen';
  * Re-openable from the "?" button in the top bar.
  */
 export default function Guide({ onClose }: { onClose: () => void }) {
+  useStoreData();
   const visions = useStore((s) => s.visions)();
   const monthGoals = useStore((s) => s.currentMonthGoals)();
   const weekGoals = useStore((s) => s.currentWeekGoals)();

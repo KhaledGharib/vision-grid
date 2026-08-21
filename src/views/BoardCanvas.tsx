@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { useStore } from '../store';
+import { useStore, useStoreData } from '../store';
 import type { BoardElement } from '../types';
 import { FONTS, isRtlText, SHAPE_TOOLS, type ShapeKind } from '../types';
 import { useImage } from '../hooks/useImage';
-import { bounds, HANDLES, resizeBox, snapBox, type Guide, type HandleId } from '../canvas';
+import {
+  elementBox, handleCursor, HANDLES, resizeRotated, snapBox, visualBounds,
+  type Guide, type HandleId,
+} from '../canvas';
 import { daysUntil } from '../dates';
+import { useT } from '../useT';
+import { AddVision } from '../icons';
 
 /* ---------------- element renderers ---------------- */
 
@@ -34,6 +39,8 @@ function Ring({ pct, size = 40 }: { pct: number; size?: number }) {
 }
 
 function VisionEl({ e }: { e: BoardElement }) {
+  useStoreData();
+  const t = useT();
   const url = useImage(e.imageId);
   const progress = useStore((s) => s.visionProgress)(e.id);
   const starve = useStore((s) => s.visionStarvation)(e.id);
@@ -53,7 +60,7 @@ function VisionEl({ e }: { e: BoardElement }) {
           style={{ objectFit: e.fit ?? 'cover', filter: `grayscale(${gray}%) brightness(${dim})` }}
         />
       ) : (
-        <div className="el-noimg">🎯</div>
+        <div className="el-noimg"><AddVision size={34} /></div>
       )}
 
       {progress.total > 0 && <div className="el-ring"><Ring pct={pct} /></div>}
@@ -62,10 +69,10 @@ function VisionEl({ e }: { e: BoardElement }) {
         <div
           className="starved-badge"
           title={idle === null
-            ? 'Nothing finished yet for this vision'
-            : `${idle} days since you finished anything here`}
+            ? t('starvingNothingYet')
+            : t('starvingSince', { n: String(idle) })}
         >
-          starving
+          {t('starving')}
         </div>
       )}
 
@@ -78,6 +85,11 @@ function VisionEl({ e }: { e: BoardElement }) {
       </div>
     </div>
   );
+}
+
+/** contentEditable leaves a trailing newline behind; the text itself keeps its own. */
+function stripTrailingBlankLines(s: string): string {
+  return s.replace(/[\r\n]+$/, '');
 }
 
 function TextEl({ e, editing, onCommit }: { e: BoardElement; editing: boolean; onCommit: (v: string) => void }) {
@@ -98,13 +110,16 @@ function TextEl({ e, editing, onCommit }: { e: BoardElement; editing: boolean; o
       className="el-text"
       contentEditable={editing}
       suppressContentEditableWarning
-      onBlur={(ev) => onCommit(ev.currentTarget.textContent ?? '')}
+      // innerText, not textContent: Enter inserts a <div>/<br>, and textContent
+      // concatenates straight across it, so two lines saved as one run-on word.
+      onBlur={(ev) => onCommit(stripTrailingBlankLines(ev.currentTarget.innerText ?? ''))}
       dir={e.dir && e.dir !== 'auto' ? e.dir : (isRtlText(e.text ?? '') ? 'rtl' : 'ltr')}
       style={{
         fontSize: e.fontSize, fontWeight: e.fontWeight, color: e.color,
         // 'left' means "leading edge" — in RTL that's the right side
         textAlign: e.align === 'left' ? 'start' : e.align === 'right' ? 'end' : e.align,
         fontStyle: e.italic ? 'italic' : 'normal',
+        whiteSpace: 'pre-wrap',
         fontFamily: FONTS.find((f) => f.id === (e.fontFamily ?? 'sans'))?.css,
         cursor: editing ? 'text' : 'inherit',
       }}
@@ -133,6 +148,7 @@ type DragState =
   | null;
 
 export default function BoardCanvas() {
+  useStoreData();
   const els = useStore((s) => s.boardElements)();
   const board = useStore((s) => s.activeBoard)();
   const selection = useStore((s) => s.selection);
@@ -141,26 +157,41 @@ export default function BoardCanvas() {
   const panY = useStore((s) => s.panY);
   const select = useStore((s) => s.select);
   const toggleSelect = useStore((s) => s.toggleSelect);
-  const updateMany = useStore((s) => s.updateMany);
   const updateEl = useStore((s) => s.updateEl);
+  const updateLive = useStore((s) => s.updateLive);
+  const flush = useStore((s) => s.flush);
   const commit = useStore((s) => s.commit);
   const panBy = useStore((s) => s.panBy);
   const zoomAt = useStore((s) => s.zoomAt);
   const tool = useStore((s) => s.tool);
   const drawShape = useStore((s) => s.drawShape);
 
+  const t = useT();
   const [drag, setDrag] = useState<DragState>(null);
   const [guides, setGuides] = useState<Guide[]>([]);
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [editingText, setEditingText] = useState<string | null>(null);
   const [spaceDown, setSpaceDown] = useState(false);
+  /**
+   * Whether this gesture has already pushed an undo snapshot. Committing on
+   * pointerdown meant every idle click filled the 50-step history with no-op
+   * entries, so Ctrl+Z did nothing for the first several presses.
+   */
+  const movedRef = useRef(false);
   type Draft = { sx: number; sy: number; x: number; y: number; w: number; h: number };
   const [shapeDraft, setShapeDraft] = useState<Draft | null>(null);
   const draftRef = useRef<Draft | null>(null);
   const vpRef = useRef<HTMLDivElement>(null);
 
   const selEls = els.filter((e) => selection.includes(e.id));
-  const box = bounds(selEls);
+  const only = selEls.length === 1 ? selEls[0] : null;
+  /**
+   * One element: the frame IS that element's box, and it gets the element's own
+   * rotation so the handles land on its real corners. Several: an upright box
+   * around everything, sized from the rotated footprints so nothing pokes out.
+   */
+  const box = only ? { x: only.x, y: only.y, w: only.w, h: only.h } : visualBounds(selEls);
+  const frameRotation = only?.rotation ?? 0;
 
   /** viewport px -> world coords */
   const toWorld = (clientX: number, clientY: number) => {
@@ -179,9 +210,17 @@ export default function BoardCanvas() {
       if (e.code === 'Space') { e.preventDefault(); setSpaceDown(true); }
     };
     const up = (e: KeyboardEvent) => { if (e.code === 'Space') setSpaceDown(false); };
+    // Alt-Tab while holding space never delivers the keyup, which left the
+    // canvas permanently in pan mode.
+    const release = () => setSpaceDown(false);
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
-    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
+    window.addEventListener('blur', release);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', release);
+    };
   }, []);
 
   // wheel: scroll to pan, ctrl/cmd+wheel to zoom at cursor
@@ -222,7 +261,7 @@ export default function BoardCanvas() {
     const p = toWorld(ev.clientX, ev.clientY);
     const orig: Record<string, { x: number; y: number }> = {};
     els.filter((e) => sel.includes(e.id)).forEach((e) => { orig[e.id] = { x: e.x, y: e.y }; });
-    commit();
+    movedRef.current = false;
     setDrag({ mode: 'move', startX: p.x, startY: p.y, orig });
   };
 
@@ -230,7 +269,7 @@ export default function BoardCanvas() {
     ev.stopPropagation();
     if (selEls.length !== 1) return;
     const p = toWorld(ev.clientX, ev.clientY);
-    commit();
+    movedRef.current = false;
     setDrag({ mode: 'resize', handle, startX: p.x, startY: p.y, orig: { ...selEls[0] } });
   };
 
@@ -242,7 +281,7 @@ export default function BoardCanvas() {
     const cy = e.y + e.h / 2;
     const p = toWorld(ev.clientX, ev.clientY);
     const startAngle = Math.atan2(p.y - cy, p.x - cx) * (180 / Math.PI);
-    commit();
+    movedRef.current = false;
     setDrag({ mode: 'rotate', cx, cy, startAngle, orig: e.rotation, id: e.id });
   };
 
@@ -307,6 +346,19 @@ export default function BoardCanvas() {
 
   useEffect(() => {
     if (!drag) return;
+
+    /**
+     * Snapshot once per gesture, on the first real movement. Anything that
+     * mutates below goes through updateLive: no undo entry of its own, and the
+     * write to disk is coalesced instead of one JSON.stringify of the whole
+     * document per pointermove.
+     */
+    const beginEdit = () => {
+      if (movedRef.current) return;
+      commit();
+      movedRef.current = true;
+    };
+
     const move = (ev: PointerEvent) => {
       if (drag.mode === 'pan') {
         useStore.getState().setPan(
@@ -321,6 +373,8 @@ export default function BoardCanvas() {
       if (drag.mode === 'move') {
         const dx = p.x - drag.startX;
         const dy = p.y - drag.startY;
+        if (dx === 0 && dy === 0) return;
+        beginEdit();
         const patches: Record<string, Partial<BoardElement>> = {};
         const movingIds = Object.keys(drag.orig);
         const others = els.filter((e) => !movingIds.includes(e.id));
@@ -338,24 +392,34 @@ export default function BoardCanvas() {
           });
           setGuides([]);
         }
-        updateMany(patches, false);
+        updateLive(patches);
       }
 
       if (drag.mode === 'resize') {
         const dx = p.x - drag.startX;
         const dy = p.y - drag.startY;
-        const r = resizeBox(drag.orig, drag.handle, dx, dy, ev.shiftKey);
-        updateEl(drag.orig.id, {
-          x: Math.round(r.x), y: Math.round(r.y),
-          w: Math.round(r.w), h: Math.round(r.h),
-        }, false);
+        if (dx === 0 && dy === 0) return;
+        beginEdit();
+        const r = resizeRotated(
+          drag.orig, drag.orig.rotation, drag.handle, dx, dy, ev.shiftKey,
+        );
+        updateLive({
+          [drag.orig.id]: {
+            x: Math.round(r.x), y: Math.round(r.y),
+            w: Math.round(r.w), h: Math.round(r.h),
+          },
+        });
       }
 
       if (drag.mode === 'rotate') {
         const a = Math.atan2(p.y - drag.cy, p.x - drag.cx) * (180 / Math.PI);
         let deg = drag.orig + (a - drag.startAngle);
         if (ev.shiftKey) deg = Math.round(deg / 15) * 15;
-        updateEl(drag.id, { rotation: Math.round(deg) }, false);
+        // Keep it in the range the inspector slider can represent.
+        deg = ((Math.round(deg) + 180) % 360 + 360) % 360 - 180;
+        if (deg === drag.orig) return;
+        beginEdit();
+        updateLive({ [drag.id]: { rotation: deg } });
       }
 
       if (drag.mode === 'marquee') {
@@ -364,13 +428,24 @@ export default function BoardCanvas() {
         const w = Math.abs(p.x - drag.startX);
         const h = Math.abs(p.y - drag.startY);
         setMarquee({ x, y, w, h });
-        const hit = els.filter((e) =>
-          e.x < x + w && e.x + e.w > x && e.y < y + h && e.y + e.h > y);
+        // Compare against the rotated footprint, or a turned element could sit
+        // visibly inside the marquee and not be picked up.
+        const hit = els.filter((e) => {
+          const b = elementBox(e);
+          return b.x < x + w && b.x + b.w > x && b.y < y + h && b.y + b.h > y;
+        });
         select(hit.map((e) => e.id));
       }
     };
 
-    const up = () => { setDrag(null); setGuides([]); setMarquee(null); };
+    const up = () => {
+      // The gesture is over, so stop coalescing and get it on disk.
+      if (movedRef.current) flush();
+      movedRef.current = false;
+      setDrag(null);
+      setGuides([]);
+      setMarquee(null);
+    };
 
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
@@ -378,7 +453,7 @@ export default function BoardCanvas() {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
     };
-  }, [drag, els, zoom, panX, panY, updateMany, updateEl, select]);
+  }, [drag, els, zoom, panX, panY, updateLive, flush, commit, select]);
 
   const panning = drag?.mode === 'pan';
 
@@ -443,15 +518,23 @@ export default function BoardCanvas() {
 
         {/* selection frame */}
         {box && !drag && (
-          <div className="sel-frame" style={{ left: box.x, top: box.y, width: box.w, height: box.h }}>
-            {selEls.length === 1 && !selEls[0].locked && (
+          <div
+            className="sel-frame"
+            style={{
+              left: box.x, top: box.y, width: box.w, height: box.h,
+              // same origin as the element itself, so the two stay locked together
+              transform: frameRotation ? `rotate(${frameRotation}deg)` : undefined,
+            }}
+          >
+            {only && !only.locked && (
               <>
                 {HANDLES.map((h) => (
                   <div
                     key={h.id}
                     className="handle"
                     style={{
-                      left: `${h.cx * 100}%`, top: `${h.cy * 100}%`, cursor: h.cursor,
+                      left: `${h.cx * 100}%`, top: `${h.cy * 100}%`,
+                      cursor: handleCursor(h.id, frameRotation),
                       width: 10 / zoom, height: 10 / zoom, borderWidth: 1.5 / zoom,
                     }}
                     onPointerDown={(ev) => onHandleDown(ev, h.id)}
@@ -461,7 +544,7 @@ export default function BoardCanvas() {
                   className="rot-handle"
                   style={{ width: 13 / zoom, height: 13 / zoom, top: -42 / zoom }}
                   onPointerDown={onRotateDown}
-                  title="Rotate (Shift = 15°)"
+                  title={t('rotateHint')}
                 />
               </>
             )}
