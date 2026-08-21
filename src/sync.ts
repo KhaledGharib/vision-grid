@@ -7,20 +7,6 @@ import { useStore } from './store';
 export const LAST_PUSH_KEY = 'vg:lastPushedAt';
 /** Which account the local copy belongs to — guards against cross-account bleed. */
 export const OWNER_KEY = 'vg:localOwner';
-/** Whether orphaned images should be removed from Storage too. */
-export const CLOUD_CLEANUP_KEY = 'vg:cloudImageCleanup';
-
-export type CloudCleanup = 'ask' | 'always' | 'never';
-
-export function cloudCleanupChoice(): CloudCleanup {
-  const v = localStorage.getItem(CLOUD_CLEANUP_KEY);
-  return v === 'always' || v === 'never' ? v : 'ask';
-}
-
-export function setCloudCleanupChoice(choice: CloudCleanup): void {
-  if (choice === 'ask') localStorage.removeItem(CLOUD_CLEANUP_KEY);
-  else localStorage.setItem(CLOUD_CLEANUP_KEY, choice);
-}
 
 /**
  * Cloud sync for the whole app state.

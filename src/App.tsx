@@ -20,7 +20,7 @@ import {
 import { DirectionProvider } from '@radix-ui/react-direction';
 import { useSync } from './useSync';
 import { cloudEnabled } from './cloud';
-import { cloudCleanupChoice, setCloudCleanupChoice, deleteRemoteImages } from './sync';
+import { deleteRemoteImages } from './sync';
 
 type Tab = 'board' | 'month' | 'week' | 'today' | 'archive' | 'circle';
 
@@ -37,9 +37,6 @@ export default function App() {
 
   const active = boards.find((b) => b.isActive);
   const t = useT();
-  /** Latest translator, reachable from effects without becoming a dependency. */
-  const tRef = useRef(t);
-  tRef.current = t;
   const lang = useStore((s) => s.lang);
 
   // keep <html lang/dir> in sync on first paint and on change
@@ -88,38 +85,12 @@ export default function App() {
       if (!gone.length) return;
       console.info('[images] swept ' + gone.length + ' orphaned blob(s)');
 
-      // The local copies are unreachable, so they go without asking. The cloud
-      // copy is the durable backup, and removing it cannot be undone, so that
-      // half is the user's call — asked once, then remembered.
-      // Only the signed-in case has cloud copies to consider.
+      // Same blobs, same reasoning: nothing references them, so the cloud
+      // copies go too. Only the signed-in case has any to remove.
       if (!cloudEnabled || syncStatus === 'signed-out' || syncStatus === 'offline') return;
-
-      const remove = () => {
-        void deleteRemoteImages(gone)
-          .then((n) => console.info('[images] removed ' + n + ' from Storage'))
-          .catch((e) => console.error('[images] Storage cleanup failed', e));
-      };
-
-      const choice = cloudCleanupChoice();
-      if (choice === 'always') { remove(); return; }
-      if (choice === 'never') return;
-
-      setAsk({
-        kind: 'confirm',
-        danger: true,
-        title: tRef.current('cloudCleanupTitle'),
-        body: tRef.current('cloudCleanupBody', { n: String(gone.length) }),
-        okLabel: tRef.current('cloudCleanupOk'),
-        cancelLabel: tRef.current('cloudCleanupKeep'),
-        rememberLabel: tRef.current('cloudCleanupRemember'),
-        onOk: (remember) => {
-          if (remember) setCloudCleanupChoice('always');
-          remove();
-        },
-        onCancel: (remember) => {
-          if (remember) setCloudCleanupChoice('never');
-        },
-      });
+      void deleteRemoteImages(gone)
+        .then((n) => console.info('[images] removed ' + n + ' from Storage'))
+        .catch((e) => console.error('[images] Storage cleanup failed', e));
     });
   }, [syncReady, syncStatus]);
 

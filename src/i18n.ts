@@ -25,21 +25,6 @@ export const STRINGS = {
   renameBoard: { en: 'Rename this board', ar: 'إعادة تسمية اللوحة' },
   renameBoardTitle: { en: 'Rename board', ar: 'إعادة تسمية اللوحة' },
   deleteBoard: { en: 'Delete this board', ar: 'حذف هذه اللوحة' },
-  // ---------- cloud image cleanup ----------
-  cloudCleanupTitle: {
-    en: 'Remove unused images from the cloud?',
-    ar: 'إزالة الصور غير المستخدمة من السحابة؟',
-  },
-  cloudCleanupBody: {
-    en: '{n} images are no longer on any board. They have been removed from this device. Removing the cloud copies frees the storage, and cannot be undone.',
-    ar: '{n} صورة لم تعد على أي لوحة. تمت إزالتها من هذا الجهاز. إزالة النسخ السحابية تحرر المساحة، ولا يمكن التراجع عنها.',
-  },
-  cloudCleanupOk: { en: 'Remove from cloud', ar: 'إزالة من السحابة' },
-  cloudCleanupKeep: { en: 'Keep them', ar: 'الإبقاء عليها' },
-  cloudCleanupRemember: {
-    en: 'Remember my choice and stop asking',
-    ar: 'تذكّر اختياري وتوقف عن السؤال',
-  },
   deleteBoardBlocked: {
     en: 'You need at least one board.',
     ar: 'تحتاج إلى لوحة واحدة على الأقل.',
