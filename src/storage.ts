@@ -221,6 +221,53 @@ export async function imageUrl(id: string): Promise<string | null> {
   }
 }
 
+/** Every image id currently held in IndexedDB. */
+export async function listImageIds(): Promise<string[]> {
+  const db = await openDb();
+  try {
+    return await new Promise<string[]>((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readonly');
+      const req = tx.objectStore(STORE).getAllKeys();
+      req.onsuccess = () => resolve((req.result as IDBValidKey[]).map(String));
+      req.onerror = () => reject(req.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  } catch (e) {
+    console.error('listImageIds failed', e);
+    return [];
+  } finally {
+    db.close();
+  }
+}
+
+/**
+ * Delete blobs that nothing points at any more, and report what went.
+ *
+ * This is why the delete paths no longer free blobs themselves. Deleting a
+ * vision used to call deleteImage() immediately, which made undo lossy: the
+ * element came back with its imageId intact but the bytes were gone, so the
+ * vision returned as an empty placeholder. Board deletion had the mirror
+ * problem — it freed nothing, so a deleted board leaked every image it held,
+ * in IndexedDB and in the storage bucket.
+ *
+ * Letting blobs go unreferenced and sweeping later fixes both: undo stays
+ * lossless for the whole session, and nothing accumulates. Only ever call this
+ * when the undo stack cannot reach the blobs — the stack is not persisted, so
+ * "once, after load" is the safe moment.
+ */
+export async function sweepOrphanImages(referenced: Iterable<string>): Promise<string[]> {
+  const keep = new Set(referenced);
+  const orphans = (await listImageIds()).filter((id) => !keep.has(id));
+  for (const id of orphans) {
+    try {
+      await deleteImage(id);
+    } catch (e) {
+      console.error('sweepOrphanImages: could not delete ' + id, e);
+    }
+  }
+  return orphans;
+}
+
 /** Drop one cached URL and release its blob. */
 export function forgetImageUrl(id: string): void {
   const url = urlCache.get(id);

@@ -24,8 +24,45 @@ export const STRINGS = {
   newBoardPrompt: { en: 'Name your new board', ar: 'سمِّ لوحتك الجديدة' },
   renameBoard: { en: 'Rename this board', ar: 'إعادة تسمية اللوحة' },
   renameBoardTitle: { en: 'Rename board', ar: 'إعادة تسمية اللوحة' },
+  deleteBoard: { en: 'Delete this board', ar: 'حذف هذه اللوحة' },
+  // ---------- cloud image cleanup ----------
+  cloudCleanupTitle: {
+    en: 'Remove unused images from the cloud?',
+    ar: 'إزالة الصور غير المستخدمة من السحابة؟',
+  },
+  cloudCleanupBody: {
+    en: '{n} images are no longer on any board. They have been removed from this device. Removing the cloud copies frees the storage, and cannot be undone.',
+    ar: '{n} صورة لم تعد على أي لوحة. تمت إزالتها من هذا الجهاز. إزالة النسخ السحابية تحرر المساحة، ولا يمكن التراجع عنها.',
+  },
+  cloudCleanupOk: { en: 'Remove from cloud', ar: 'إزالة من السحابة' },
+  cloudCleanupKeep: { en: 'Keep them', ar: 'الإبقاء عليها' },
+  cloudCleanupRemember: {
+    en: 'Remember my choice and stop asking',
+    ar: 'تذكّر اختياري وتوقف عن السؤال',
+  },
+  deleteBoardBlocked: {
+    en: 'You need at least one board.',
+    ar: 'تحتاج إلى لوحة واحدة على الأقل.',
+  },
+  deleteBoardTitle: { en: 'Delete this board?', ar: 'حذف هذه اللوحة؟' },
+  // Names the board and states the blast radius: the cascade reaches well past
+  // the canvas you are looking at, so the count has to be on screen.
+  confirmDeleteBoard: {
+    en: 'Deleting "{name}" also deletes everything hanging off it: {v} visions, {m} month goals, {w} week goals and {t} tasks. Ctrl+Z undoes it.',
+    ar: 'حذف "{name}" يحذف أيضاً كل ما يتبعها: {v} رؤية، و{m} هدفاً شهرياً، و{w} هدفاً أسبوعياً، و{t} مهمة. Ctrl+Z للتراجع.',
+  },
+  confirmDeleteBoardEmpty: {
+    en: 'Delete "{name}"? Nothing is on it yet.',
+    ar: 'حذف "{name}"؟ لا يوجد عليها شيء بعد.',
+  },
   save: { en: 'Save', ar: 'حفظ' },
   account: { en: 'Account', ar: 'الحساب' },
+  settings: { en: 'Settings', ar: 'الإعدادات' },
+  exportPngBusy: { en: 'Rendering PNG...', ar: 'جارٍ إنشاء PNG...' },
+  exportPngEmpty: {
+    en: 'Nothing on this board to export yet.',
+    ar: 'لا يوجد شيء على هذه اللوحة للتصدير بعد.',
+  },
   yourProfile: { en: 'Your profile', ar: 'ملفك' },
   displayName: { en: 'Name', ar: 'الاسم' },
   displayNameHint: {

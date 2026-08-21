@@ -78,6 +78,13 @@ async function syncImagesDown(state: AppState) {
 export function useSync() {
   const [status, setStatus] = useState<SyncStatus>(cloudEnabled ? 'signed-out' : 'offline');
   const [email, setEmail] = useState<string | null>(null);
+  /**
+   * True once we know what local state we are holding: the cloud is off, or the
+   * initial session check has finished and any newer remote state has landed.
+   * Anything that reasons about the whole document (the orphan-image sweep)
+   * has to wait for this rather than infer it from the sync status.
+   */
+  const [ready, setReady] = useState(!cloudEnabled);
 
   // ---- track auth ----
   useEffect(() => {
@@ -147,8 +154,10 @@ export function useSync() {
       }
     };
 
-    supabase.auth.getSession().then(({ data }) => {
-      apply(Boolean(data.session), data.session?.user.email ?? null);
+    supabase.auth.getSession().then(({ data }) =>
+      apply(Boolean(data.session), data.session?.user.email ?? null),
+    ).finally(() => {
+      if (!cancelled) setReady(true);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((evt, session) => {
@@ -206,5 +215,5 @@ export function useSync() {
     };
   }, []);
 
-  return { status, email };
+  return { status, email, ready };
 }

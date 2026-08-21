@@ -4,7 +4,7 @@ import type { AppState, Board, BoardElement, MonthGoal, ShapeKind, Task, Tool, W
 import { MAX_MITS, MAX_MONTH_GOALS, MAX_WEEK_GOALS, MAX_ZOOM, MIN_ZOOM, POSTPONE_DROPPED, POSTPONE_LIMIT, SPAWN_H, SPAWN_W, STARVE_AFTER_DAYS } from './types';
 import { dayKey, monthKey, weekKey } from './dates';
 import type { Lang } from './i18n';
-import { loadState, saveState, putImage, deleteImage, copyImage, prepareImage } from './storage';
+import { loadState, saveState, putImage, copyImage, prepareImage } from './storage';
 
 const now = () => new Date().toISOString();
 
@@ -82,6 +82,11 @@ interface Store extends AppState {
   zoomAt: (factor: number, vx: number, vy: number) => void;
 
   // boards
+  /**
+   * What deleting this board would remove, derived from the same cascade
+   * deleteBoard performs so the confirmation cannot drift from the effect.
+   */
+  boardImpact: (id: string) => { visions: number; monthGoals: number; weekGoals: number; tasks: number };
   /** Overwrite everything (used when the cloud has newer state). */
   replaceState: (s: AppState) => void;
   /** Back to a fresh, empty board. Used on sign-out. */
@@ -419,6 +424,18 @@ export const useStore = create<Store>((set, get) => {
       set((s) => ({ boards: s.boards.map((b) => (b.isActive ? { ...b, bg: color } : b)) }));
       persistNow();
     },
+    boardImpact: (id) => {
+      const s = get();
+      const elIds = s.elements.filter((e) => e.boardId === id).map((e) => e.id);
+      const mgIds = s.monthGoals.filter((g) => elIds.includes(g.visionId)).map((g) => g.id);
+      const wgIds = s.weekGoals.filter((w) => mgIds.includes(w.monthGoalId)).map((w) => w.id);
+      return {
+        visions: s.elements.filter((e) => e.boardId === id && e.kind === 'vision').length,
+        monthGoals: mgIds.length,
+        weekGoals: wgIds.length,
+        tasks: s.tasks.filter((t) => wgIds.includes(t.weekGoalId)).length,
+      };
+    },
     activeBoard: () => get().boards.find((b) => b.isActive),
     boardElements: () => {
       const b = get().boards.find((x) => x.isActive);
@@ -517,10 +534,10 @@ export const useStore = create<Store>((set, get) => {
       });
       if (!ids.length) return;
       push();
-      ids.forEach((id) => {
-        const el = s.elements.find((e) => e.id === id);
-        if (el?.kind === 'vision' && el.imageId) void deleteImage(el.imageId);
-      });
+      // Deliberately does NOT delete the image blobs. Undo restores these
+      // elements with their imageId, so freeing the bytes here made undo lossy
+      // — the vision came back as an empty placeholder. sweepOrphanImages()
+      // collects them once per load instead, when undo can no longer reach them.
       const mgIds = s.monthGoals.filter((g) => ids.includes(g.visionId)).map((g) => g.id);
       const wgIds = s.weekGoals.filter((w) => mgIds.includes(w.monthGoalId)).map((w) => w.id);
       set({

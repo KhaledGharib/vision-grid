@@ -7,6 +7,20 @@ import { useStore } from './store';
 export const LAST_PUSH_KEY = 'vg:lastPushedAt';
 /** Which account the local copy belongs to — guards against cross-account bleed. */
 export const OWNER_KEY = 'vg:localOwner';
+/** Whether orphaned images should be removed from Storage too. */
+export const CLOUD_CLEANUP_KEY = 'vg:cloudImageCleanup';
+
+export type CloudCleanup = 'ask' | 'always' | 'never';
+
+export function cloudCleanupChoice(): CloudCleanup {
+  const v = localStorage.getItem(CLOUD_CLEANUP_KEY);
+  return v === 'always' || v === 'never' ? v : 'ask';
+}
+
+export function setCloudCleanupChoice(choice: CloudCleanup): void {
+  if (choice === 'ask') localStorage.removeItem(CLOUD_CLEANUP_KEY);
+  else localStorage.setItem(CLOUD_CLEANUP_KEY, choice);
+}
 
 /**
  * Cloud sync for the whole app state.
@@ -86,6 +100,28 @@ export async function downloadImage(id: string): Promise<Blob | null> {
   const { data, error } = await supabase.storage.from('visions').download(`${user.id}/${id}`);
   if (error) return null;
   return data ?? null;
+}
+
+/**
+ * Remove images from Storage.
+ *
+ * Nothing deleted remote blobs before this: syncImagesUp only ever uploaded, so
+ * every picture a user had ever added stayed in the bucket for good, including
+ * ones whose vision or whole board had been deleted long ago.
+ *
+ * Returns how many objects the server reported removing.
+ */
+export async function deleteRemoteImages(ids: string[]): Promise<number> {
+  if (!cloudEnabled || !supabase || !ids.length) return 0;
+  const user = await currentUser();
+  if (!user) return 0;
+
+  const { data, error } = await supabase.storage
+    .from('visions')
+    .remove(ids.map((id) => `${user.id}/${id}`));
+
+  if (error) throw error;
+  return data?.length ?? 0;
 }
 
 /** Image ids already in the cloud, so we only upload what is missing. */

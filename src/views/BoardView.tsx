@@ -3,14 +3,13 @@ import { useStore, useStoreData } from '../store';
 import BoardCanvas from './BoardCanvas';
 import Inspector from './Inspector';
 import Minimap from './Minimap';
-import { exportBoardPng } from '../export';
 import { visualBounds } from '../canvas';
 import { PALETTE, SHAPE_TOOLS } from '../types';
 import { useT } from '../useT';
 import type { StringKey } from '../i18n';
 import {
   AddVision, TextHeading, TextBody, Quote, ShapeRect, ShapeEllipse,
-  Undo, Redo, Duplicate, Delete, ZoomOut, ZoomIn, FitAll, ExportPng,
+  Undo, Redo, Duplicate, Delete, ZoomOut, ZoomIn, FitAll,
 } from '../icons';
 
 export default function BoardView() {
@@ -36,7 +35,6 @@ export default function BoardView() {
   const updateMany = useStore((s) => s.updateMany);
   const commit = useStore((s) => s.commit);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
   const [imgErr, setImgErr] = useState<StringKey | null>(null);
 
   /** Zoom about the viewport center. */
@@ -211,14 +209,6 @@ export default function BoardView() {
             <FitAll className="icon" />
           </button>
         </div>
-        <button className="with-icon" disabled={busy} onClick={async () => {
-          setBusy(true);
-          try { await exportBoardPng(); } finally { setBusy(false); }
-        }}>
-          {busy ? '…' : <ExportPng className="icon" />}
-          {t('exportPng')}
-        </button>
-
         <input ref={fileRef} type="file" accept="image/*" multiple hidden
           onChange={(e) => void onFiles(e.target.files)} />
       </div>

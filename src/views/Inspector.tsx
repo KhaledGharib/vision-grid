@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { nanoid } from 'nanoid';
 import { useStore, useStoreData } from '../store';
-import { deleteImage, prepareImage, putImage } from '../storage';
+import { prepareImage, putImage } from '../storage';
 import { FONTS, PALETTE } from '../types';
 import type { BoardElement } from '../types';
 import { useT } from '../useT';
@@ -142,9 +142,10 @@ export default function Inspector() {
                     const id = nanoid();
                     await putImage(id, blob);
                     updateEl(one.id, { imageId: id });
-                    // Only now is the old blob unreferenced. Leaving it behind
-                    // orphaned it in IndexedDB and in the storage bucket.
-                    if (previous) void deleteImage(previous);
+                    // The replaced blob is left in place on purpose: undo puts
+                    // the old imageId back, and it needs its bytes. The load
+                    // sweep collects it once undo can no longer reach it.
+                    void previous;
                   } catch (err) {
                     setImgErr(err instanceof Error && err.message === 'image_too_large'
                       ? t('imageTooLarge')

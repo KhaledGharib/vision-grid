@@ -1,12 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from './store';
 import { useT } from './useT';
-import { LANGS, type Lang } from './i18n';
-import { exportState } from './storage';
+import { sweepOrphanImages } from './storage';
 import { dayKey } from './dates';
-import {
-  LogoDiamond, Rename, NewBoard, Help, DownloadJson, SyncCloud, SyncError,
-} from './icons';
+import { LogoDiamond } from './icons';
 import BoardView from './views/BoardView';
 import MonthView from './views/MonthView';
 import WeekView from './views/WeekView';
@@ -14,6 +11,7 @@ import TodayView from './views/TodayView';
 import Guide, { guideSeen, markGuideSeen } from './views/Guide';
 import Ask, { type AskState } from './views/Ask';
 import Account from './views/Account';
+import SettingsMenu from './views/SettingsMenu';
 import CircleView from './views/CircleView';
 import ArchiveView from './views/ArchiveView';
 import {
@@ -22,25 +20,27 @@ import {
 import { DirectionProvider } from '@radix-ui/react-direction';
 import { useSync } from './useSync';
 import { cloudEnabled } from './cloud';
+import { cloudCleanupChoice, setCloudCleanupChoice, deleteRemoteImages } from './sync';
 
 type Tab = 'board' | 'month' | 'week' | 'today' | 'archive' | 'circle';
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('today');
+  const [tab, setTab] = useState<Tab>('board');
   const [showGuide, setShowGuide] = useState(() => !guideSeen());
   const [ask, setAsk] = useState<AskState>(null);
   const [showAccount, setShowAccount] = useState(false);
-  const { status: syncStatus, email } = useSync();
+  const { status: syncStatus, email, ready: syncReady } = useSync();
   const boards = useStore((s) => s.boards);
   const flush = useStore((s) => s.flush);
   const setActiveBoard = useStore((s) => s.setActiveBoard);
-  const addBoard = useStore((s) => s.addBoard);
-  const renameBoard = useStore((s) => s.renameBoard);
+  const swept = useRef(false);
 
   const active = boards.find((b) => b.isActive);
   const t = useT();
+  /** Latest translator, reachable from effects without becoming a dependency. */
+  const tRef = useRef(t);
+  tRef.current = t;
   const lang = useStore((s) => s.lang);
-  const setLang = useStore((s) => s.setLang);
 
   // keep <html lang/dir> in sync on first paint and on change
   useEffect(() => {
@@ -64,6 +64,64 @@ export default function App() {
     window.addEventListener('focus', roll);
     return () => window.removeEventListener('focus', roll);
   }, []);
+
+  /**
+   * Collect image blobs nothing points at any more — deleted visions, replaced
+   * pictures, deleted boards.
+   *
+   * Timing is the whole point. The delete paths deliberately leave blobs behind
+   * so undo can restore a vision with its picture, which means the bytes are
+   * only safe to drop once the undo stack cannot reach them. The stack is not
+   * persisted, so after a load is exactly that moment. Waiting for 'synced'
+   * matters too: sweeping before the initial pull lands would delete blobs the
+   * incoming remote state still references.
+   */
+  useEffect(() => {
+    if (swept.current || !syncReady) return;
+    swept.current = true;
+    const referenced = useStore
+      .getState()
+      .elements.map((e) => e.imageId)
+      .filter((x): x is string => Boolean(x));
+
+    void sweepOrphanImages(referenced).then((gone) => {
+      if (!gone.length) return;
+      console.info('[images] swept ' + gone.length + ' orphaned blob(s)');
+
+      // The local copies are unreachable, so they go without asking. The cloud
+      // copy is the durable backup, and removing it cannot be undone, so that
+      // half is the user's call — asked once, then remembered.
+      // Only the signed-in case has cloud copies to consider.
+      if (!cloudEnabled || syncStatus === 'signed-out' || syncStatus === 'offline') return;
+
+      const remove = () => {
+        void deleteRemoteImages(gone)
+          .then((n) => console.info('[images] removed ' + n + ' from Storage'))
+          .catch((e) => console.error('[images] Storage cleanup failed', e));
+      };
+
+      const choice = cloudCleanupChoice();
+      if (choice === 'always') { remove(); return; }
+      if (choice === 'never') return;
+
+      setAsk({
+        kind: 'confirm',
+        danger: true,
+        title: tRef.current('cloudCleanupTitle'),
+        body: tRef.current('cloudCleanupBody', { n: String(gone.length) }),
+        okLabel: tRef.current('cloudCleanupOk'),
+        cancelLabel: tRef.current('cloudCleanupKeep'),
+        rememberLabel: tRef.current('cloudCleanupRemember'),
+        onOk: (remember) => {
+          if (remember) setCloudCleanupChoice('always');
+          remove();
+        },
+        onCancel: (remember) => {
+          if (remember) setCloudCleanupChoice('never');
+        },
+      });
+    });
+  }, [syncReady, syncStatus]);
 
   // Writes during a gesture are coalesced, so make sure the last one lands if
   // the tab goes away mid-drag.
@@ -109,7 +167,7 @@ export default function App() {
 
         <div className="board-chip">
           <Select value={active?.id ?? ''} onValueChange={setActiveBoard}>
-            <SelectTrigger className="w-[132px]" title={t('activeBoardTitle')}>
+            <SelectTrigger className="w-[150px]" title={t('activeBoardTitle')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -118,98 +176,15 @@ export default function App() {
               ))}
             </SelectContent>
           </Select>
-          <button
-            className="ghost"
-            title={t('renameBoard')}
-            disabled={!active}
-            onClick={() =>
-              active &&
-              setAsk({
-                kind: 'prompt',
-                title: t('renameBoardTitle'),
-                placeholder: t('boardNamePlaceholder'),
-                value: active.name,
-                okLabel: t('save'),
-                onOk: (name) => renameBoard(active.id, name),
-              })
-            }
-            aria-label={t('renameBoard')}
-          >
-            <Rename className="icon" />
-          </button>
-          <button
-            className="ghost with-icon"
-            title={t('newBoard')}
-            onClick={() =>
-              setAsk({
-                kind: 'prompt',
-                title: t('newBoardPrompt'),
-                placeholder: t('boardNamePlaceholder'),
-                onOk: (name) => {
-                  addBoard(name);
-                  setTab('board'); // land on the new (now active) board
-                },
-              })
-            }
-            aria-label={t('newBoard')}
-          >
-            <NewBoard className="icon" />
-            {t('boardPanel')}
-          </button>
         </div>
 
-        {cloudEnabled && (
-          <button
-            className={`ghost sync-chip ${syncStatus}`}
-            title={t('account')}
-            onClick={() => setShowAccount(true)}
-          >
-            {syncStatus === 'synced' ? <><SyncCloud className="icon" />{t('syncedShort')}</>
-              : syncStatus === 'syncing' ? <><SyncCloud className="icon spin" />{t('syncingMsg')}</>
-              : syncStatus === 'error' ? <><SyncError className="icon" />{t('syncedShort')}</>
-              : t('signIn')}
-          </button>
-        )}
-
-        <Select value={lang} onValueChange={(v) => setLang(v as Lang)}>
-          <SelectTrigger className="w-[108px]" title={t('language')}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {LANGS.map((l) => (
-              <SelectItem key={l.id} value={l.id}>{l.native}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <button
-          className="ghost help-btn"
-          title={t('howItWorks')}
-          onClick={() => setShowGuide(true)}
-          aria-label={t('howItWorks')}
-        >
-          <Help className="icon" />
-        </button>
-
-        <button
-          className="ghost"
-          title={t('exportJson')}
-          onClick={() => {
-            const s = useStore.getState();
-            exportState({
-              version: s.version,
-              user: s.user,
-              boards: s.boards,
-              elements: s.elements,
-              monthGoals: s.monthGoals,
-              weekGoals: s.weekGoals,
-              tasks: s.tasks,
-            });
-          }}
-          aria-label={t('exportJson')}
-        >
-          <DownloadJson className="icon" />
-        </button>
+        <SettingsMenu
+          syncStatus={syncStatus}
+          onAccount={() => setShowAccount(true)}
+          onGuide={() => setShowGuide(true)}
+          onAsk={setAsk}
+          onBoardCreated={() => setTab('board')}
+        />
       </div>
 
       {tab === 'board' && <BoardView />}

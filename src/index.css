@@ -124,6 +124,50 @@ input[type=range] { padding: 0; }
 .btn-grid .icon, .btn-row .icon { width: 17px; height: 17px; }
 .logo .icon { width: 18px; height: 18px; }
 
+/* ================= settings menu =================
+   One gear replaces eight controls that used to compete for the right-hand
+   side of the top bar and pushed it onto a second row. */
+
+.settings-menu { min-width: 232px; display: flex; flex-direction: column; gap: 2px; }
+
+.menu-label {
+  padding: 7px 10px 4px; font-size: 10.5px; font-weight: 600;
+  letter-spacing: .6px; text-transform: uppercase; color: var(--muted);
+}
+
+.settings-menu .menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 8px 10px; border: 0; border-radius: 7px;
+  background: transparent; color: var(--text); font-size: 13px; text-align: start;
+  cursor: pointer; transition: background .12s, color .12s;
+}
+
+.settings-menu .menu-item:hover:not(:disabled) { background: var(--panel-2); }
+.settings-menu .menu-item:disabled { opacity: .4; cursor: not-allowed; }
+.settings-menu .menu-item.danger { color: var(--red); }
+.settings-menu .menu-item.danger:hover:not(:disabled) { background: rgba(248,113,113,.12); }
+.settings-menu .menu-item.sync-synced { color: var(--green); }
+.settings-menu .menu-item.sync-error { color: var(--red); }
+
+.menu-sep { height: 1px; margin: 5px 6px; background: var(--border); }
+
+.menu-langs { display: flex; gap: 5px; padding: 2px 6px 4px; }
+
+.settings-menu .menu-lang {
+  flex: 1; padding: 6px 8px; border-radius: 7px; font-size: 12.5px;
+  border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+  cursor: pointer; transition: border-color .12s, color .12s;
+}
+
+.settings-menu .menu-lang:hover { color: var(--text); border-color: #39424f; }
+
+.settings-menu .menu-lang.on {
+  border-color: var(--accent-dim); color: var(--accent); background: rgba(240,180,41,.1);
+}
+
+/* the gear itself sits flush with the board switcher */
+.settings-btn { flex: none; }
+
 /* Icon-only controls: the legacy button padding is sized for text labels, so
    an icon alone sat in a wide pill. Square it off. */
 .topbar button:not(.with-icon):has(> svg:only-child),
