@@ -6,6 +6,7 @@ import { dayKey } from './dates';
 import { LogoDiamond } from './icons';
 import BoardView from './views/BoardView';
 import PlanView from './views/PlanView';
+import SyncChip from './views/SyncChip';
 import TodayView from './views/TodayView';
 import Guide, { guideSeen, markGuideSeen } from './views/Guide';
 import Ask, { type AskState } from './views/Ask';
@@ -147,6 +148,8 @@ export default function App() {
             </SelectContent>
           </Select>
         </div>
+
+        <SyncChip status={syncStatus} onOpen={() => setShowAccount(true)} />
 
         <SettingsMenu
           syncStatus={syncStatus}

@@ -180,12 +180,15 @@ input[type=range] { padding: 0; }
 [dir='rtl'] .icon-logical { transform: scaleX(-1); }
 
 
-/* The sync chip spins its cloud while a push is in flight. */
-@keyframes vg-spin { to { transform: rotate(360deg); } }
-.icon.spin { animation: vg-spin 1.4s linear infinite; }
+/* A cloud rotating about its own centre reads as "stuck", not "working" — a
+   cloud is a recognisable silhouette, so spinning it looks like a broken
+   spinner. Pulse the opacity instead: it says "in flight" without implying
+   rotation. */
+@keyframes vg-pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+.icon.spin { animation: vg-pulse 1.1s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .icon.spin { animation: none; }
+  .icon.spin { animation: none; opacity: .7; }
 }
 
 .tabs { display: flex; gap: 4px; }

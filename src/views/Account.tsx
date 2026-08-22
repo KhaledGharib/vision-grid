@@ -129,6 +129,7 @@ export default function Account({
           <>
             <DialogHeader>
               <DialogTitle>{t('yourProfile')}</DialogTitle>
+              <DialogDescription>{t('profileHint')}</DialogDescription>
             </DialogHeader>
 
             <div className="flex items-center gap-3.5 rounded-[10px] border border-[#262c38] bg-[#0d0f14] p-3">

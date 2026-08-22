@@ -287,6 +287,23 @@ export const SyncCloud = (p: IconProps) => (
   </svg>
 );
 
+/** Cloud + tick — "it's up there". */
+export const SyncDone = (p: IconProps) => (
+  <svg {...svgProps(p)}>
+    <path d="M17.3 17H7a4.6 4.6 0 0 1-.6-9.1A6.1 6.1 0 0 1 18 9.4a3.8 3.8 0 0 1-.7 7.6z" />
+    <path d="M9.4 13.2l2 2 3.4-3.8" />
+  </svg>
+);
+
+/** Cloud + up arrow — "on its way". Colour alone can't carry this. */
+export const SyncUp = (p: IconProps) => (
+  <svg {...svgProps(p)}>
+    <path d="M17.3 17H7a4.6 4.6 0 0 1-.6-9.1A6.1 6.1 0 0 1 18 9.4a3.8 3.8 0 0 1-.7 7.6z" />
+    <path d="M12 19.5v-6" />
+    <path d="M9.6 15.6L12 13.2l2.4 2.4" />
+  </svg>
+);
+
 export const SyncError = (p: IconProps) => (
   <svg {...svgProps(p)}>
     <path d="M12 3.6L2.6 20h18.8z" />

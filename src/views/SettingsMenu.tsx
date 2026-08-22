@@ -7,7 +7,7 @@ import { exportState } from '../storage';
 import { exportBoardPng } from '../export';
 import { cloudEnabled, type SyncStatus } from '../cloud';
 import {
-  Rename, NewBoard, Delete, DownloadJson, ExportPng, Help, SyncCloud, SyncError,
+  Rename, NewBoard, Delete, DownloadJson, ExportPng, Help, SyncCloud,
 } from '../icons';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import type { AskState } from './Ask';
@@ -47,6 +47,8 @@ export default function SettingsMenu({
   const deleteBoard = useStore((s) => s.deleteBoard);
 
   const active = boards.find((b) => b.isActive);
+  const signedIn =
+    syncStatus === 'synced' || syncStatus === 'syncing' || syncStatus === 'error';
   const lastBoard = boards.length <= 1;
   // exportBoardPng crops to the content bounding box, so an empty board would
   // produce nothing at all. Say so rather than looking broken.
@@ -57,12 +59,6 @@ export default function SettingsMenu({
     setOpen(false);
     fn();
   };
-
-  const syncRow =
-    syncStatus === 'synced' ? { icon: <SyncCloud className="icon" />, label: t('syncedShort') }
-    : syncStatus === 'syncing' ? { icon: <SyncCloud className="icon spin" />, label: t('syncingMsg') }
-    : syncStatus === 'error' ? { icon: <SyncError className="icon" />, label: t('syncedShort') }
-    : { icon: <SyncCloud className="icon" />, label: t('signIn') };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -165,9 +161,9 @@ export default function SettingsMenu({
         <div className="menu-sep" />
 
         {cloudEnabled && (
-          <button className={`menu-item sync-${syncStatus}`} onClick={() => run(onAccount)}>
-            {syncRow.icon}
-            {syncRow.label}
+          <button className="menu-item" onClick={() => run(onAccount)}>
+            <SyncCloud className="icon" />
+            {signedIn ? t('editProfile') : t('signIn')}
           </button>
         )}
 

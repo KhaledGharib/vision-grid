@@ -49,6 +49,13 @@ export const STRINGS = {
     ar: 'لا يوجد شيء على هذه اللوحة للتصدير بعد.',
   },
   yourProfile: { en: 'Your profile', ar: 'ملفك' },
+  profile: { en: 'Profile', ar: 'الملف' },
+  profileHint: {
+    en: 'Set your name and avatar — this is what your friend sees',
+    ar: 'اختر اسمك وصورتك — هذا ما يراه صديقك',
+  },
+  editProfile: { en: 'Edit profile', ar: 'تعديل الملف' },
+  notSignedIn: { en: 'Not signed in', ar: 'غير مسجَّل' },
   displayName: { en: 'Name', ar: 'الاسم' },
   displayNameHint: {
     en: 'This is what the people in Together see.',
@@ -76,6 +83,7 @@ export const STRINGS = {
     ar: 'فشلت المزامنة — عملك ما زال محفوظاً على هذا الجهاز.',
   },
   syncedShort: { en: 'Synced', ar: 'متزامن' },
+  syncFailedShort: { en: 'Not synced', ar: 'لم تُزامن' },
   offlineShort: { en: 'Local only', ar: 'محلي فقط' },
 
   // ---------- together / social ----------
