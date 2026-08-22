@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { cloudEnabled } from '../cloud';
-import { sendMagicLink, signOut } from '../sync';
+import { sendMagicLink } from '../sync';
 import {
   fetchMyProfile, saveMyProfile, AVATAR_COLORS, AVATAR_EMOJI, type Profile,
 } from '../social';
@@ -220,20 +220,14 @@ export default function Account({
               </p>
             )}
 
-            <DialogFooter className="justify-between">
-              <Button
-                variant="ghost"
-                className="text-[#f87171] hover:bg-[#f87171]/10 hover:text-[#f87171]"
-                onClick={async () => { await signOut(); onClose(); }}
-              >
-                {t('signOut')}
+            {/* Sign out lives in the settings menu now: it wipes this device,
+                so it belongs with the other account actions behind a
+                confirmation, not one tab-stop from Save. */}
+            <DialogFooter>
+              <Button variant="ghost" onClick={onClose}>{t('close')}</Button>
+              <Button variant="primary" disabled={busy || !dirty} onClick={save}>
+                {busy ? '…' : t('save')}
               </Button>
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={onClose}>{t('close')}</Button>
-                <Button variant="primary" disabled={busy || !dirty} onClick={save}>
-                  {busy ? '…' : t('save')}
-                </Button>
-              </div>
             </DialogFooter>
           </>
         )}

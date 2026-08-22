@@ -2,6 +2,7 @@ import { supabase, cloudEnabled } from './cloud';
 import type { AppState } from './types';
 import { clearLocal } from './storage';
 import { useStore } from './store';
+import { clearProfileCache } from './social';
 
 /** Timestamp of our last successful push. */
 export const LAST_PUSH_KEY = 'vg:lastPushedAt';
@@ -146,5 +147,8 @@ export async function signOut() {
   await clearLocal();
   localStorage.removeItem(LAST_PUSH_KEY);
   localStorage.removeItem(OWNER_KEY);
+  // The cached profile is someone's name and avatar — it must not survive into
+  // the next account, same reason the board data doesn't.
+  clearProfileCache();
   useStore.getState().resetToSeed();
 }

@@ -50,6 +50,8 @@ export const STRINGS = {
   },
   yourProfile: { en: 'Your profile', ar: 'ملفك' },
   profile: { en: 'Profile', ar: 'الملف' },
+  switchBoard: { en: 'Switch board', ar: 'تبديل اللوحة' },
+  activeBoardNow: { en: 'Active', ar: 'النشطة' },
   profileHint: {
     en: 'Set your name and avatar — this is what your friend sees',
     ar: 'اختر اسمك وصورتك — هذا ما يراه صديقك',
@@ -67,6 +69,11 @@ export const STRINGS = {
   profileSaved: { en: 'Profile saved', ar: 'تم حفظ الملف' },
   signIn: { en: 'Sign in', ar: 'تسجيل الدخول' },
   signOut: { en: 'Sign out', ar: 'تسجيل الخروج' },
+  signOutTitle: { en: 'Sign out?', ar: 'تسجيل الخروج؟' },
+  confirmSignOut: {
+    en: 'This device will be cleared: boards, visions, goals and tasks all go. Your work stays in the cloud and comes back when you sign in again.',
+    ar: 'سيُمسح هذا الجهاز: اللوحات والرؤى والأهداف والمهام. عملك محفوظ في السحابة ويرجع عند تسجيل الدخول مرة أخرى.',
+  },
   sendLink: { en: 'Send link', ar: 'إرسال الرابط' },
   signInBlurb: {
     en: 'Sign in to back up your board and reach it from any device. We email you a link — no password.',

@@ -765,3 +765,17 @@ button.danger.ghost { color: var(--red); border-color: rgba(248,113,113,.35); ba
   .tb-label { display: none; }
   .zoomer { display: none; }
 }
+
+/* Active board inside the settings menu. The board switcher used to sit in the
+   toolbar as a select; it answers "which board?" only once in a while, so it
+   belongs with the board actions rather than taking permanent bar space. */
+.menu-item-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-item.on { color: var(--accent); }
+.menu-item-tick { margin-inline-start: auto; opacity: .9; }
+
+/* Sync state as a small icon inside the identity chip, so "who am I" and
+   "is it saved" are one control instead of two competing for bar space. */
+.sync-ico { width: 15px; height: 15px; flex-shrink: 0; }
+.sync-ico.ok { color: var(--green); }
+.sync-ico.busy { color: var(--accent); }
+.sync-ico.err { color: var(--red); }

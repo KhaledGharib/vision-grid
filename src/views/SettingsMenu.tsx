@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { Settings } from 'lucide-react';
+import { Check, LayoutGrid, LogOut, Settings } from 'lucide-react';
 import { useStore } from '../store';
 import { useT } from '../useT';
 import { LANGS, type Lang } from '../i18n';
-import { exportState } from '../storage';
 import { exportBoardPng } from '../export';
 import { cloudEnabled, type SyncStatus } from '../cloud';
+import { signOut } from '../sync';
 import {
-  Rename, NewBoard, Delete, DownloadJson, ExportPng, Help, SyncCloud,
+  Rename, NewBoard, Delete, ExportPng, Help, SyncCloud,
 } from '../icons';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import type { AskState } from './Ask';
@@ -45,6 +45,7 @@ export default function SettingsMenu({
   const renameBoard = useStore((s) => s.renameBoard);
   const addBoard = useStore((s) => s.addBoard);
   const deleteBoard = useStore((s) => s.deleteBoard);
+  const setActiveBoard = useStore((s) => s.setActiveBoard);
 
   const active = boards.find((b) => b.isActive);
   const signedIn =
@@ -69,6 +70,22 @@ export default function SettingsMenu({
       </PopoverTrigger>
 
       <PopoverContent align="end" className="settings-menu">
+        <div className="menu-label">{t('switchBoard')}</div>
+
+        {boards.map((b) => (
+          <button
+            key={b.id}
+            className={`menu-item${b.isActive ? ' on' : ''}`}
+            aria-pressed={b.isActive}
+            onClick={() => run(() => setActiveBoard(b.id))}
+          >
+            <LayoutGrid className="icon" />
+            <span className="menu-item-label">{b.name}</span>
+            {b.isActive && <Check className="icon menu-item-tick" />}
+          </button>
+        ))}
+
+        <div className="menu-sep" />
         <div className="menu-label">{t('boardPanel')}</div>
 
         <button
@@ -167,6 +184,26 @@ export default function SettingsMenu({
           </button>
         )}
 
+        {cloudEnabled && signedIn && (
+          <button
+            className="menu-item danger"
+            onClick={() =>
+              run(() =>
+                onAsk({
+                  kind: 'confirm',
+                  danger: true,
+                  title: t('signOutTitle'),
+                  body: t('confirmSignOut'),
+                  onOk: () => { void signOut(); },
+                }),
+              )
+            }
+          >
+            <LogOut className="icon" />
+            {t('signOut')}
+          </button>
+        )}
+
         <button
           className="menu-item"
           disabled={boardIsEmpty || exporting}
@@ -183,27 +220,6 @@ export default function SettingsMenu({
         >
           <ExportPng className="icon" />
           {exporting ? t('exportPngBusy') : t('exportPng')}
-        </button>
-
-        <button
-          className="menu-item"
-          onClick={() =>
-            run(() => {
-              const s = useStore.getState();
-              exportState({
-                version: s.version,
-                user: s.user,
-                boards: s.boards,
-                elements: s.elements,
-                monthGoals: s.monthGoals,
-                weekGoals: s.weekGoals,
-                tasks: s.tasks,
-              });
-            })
-          }
-        >
-          <DownloadJson className="icon" />
-          {t('exportJson')}
         </button>
 
         <button className="menu-item" onClick={() => run(onGuide)}>

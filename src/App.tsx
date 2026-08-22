@@ -14,9 +14,6 @@ import Account from './views/Account';
 import SettingsMenu from './views/SettingsMenu';
 import CircleView from './views/CircleView';
 import ArchiveView from './views/ArchiveView';
-import {
-  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
-} from '@/components/ui/select';
 import { DirectionProvider } from '@radix-ui/react-direction';
 import { useSync } from './useSync';
 import { cloudEnabled } from './cloud';
@@ -30,12 +27,9 @@ export default function App() {
   const [ask, setAsk] = useState<AskState>(null);
   const [showAccount, setShowAccount] = useState(false);
   const { status: syncStatus, email, ready: syncReady } = useSync();
-  const boards = useStore((s) => s.boards);
   const flush = useStore((s) => s.flush);
-  const setActiveBoard = useStore((s) => s.setActiveBoard);
   const swept = useRef(false);
 
-  const active = boards.find((b) => b.isActive);
   const t = useT();
   const lang = useStore((s) => s.lang);
 
@@ -136,20 +130,7 @@ export default function App() {
 
         <div className="spacer" />
 
-        <div className="board-chip">
-          <Select value={active?.id ?? ''} onValueChange={setActiveBoard}>
-            <SelectTrigger className="w-[150px]" title={t('activeBoardTitle')}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {boards.map((b) => (
-                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <SyncChip status={syncStatus} onOpen={() => setShowAccount(true)} />
+        <SyncChip status={syncStatus} email={email} onOpen={() => setShowAccount(true)} />
 
         <SettingsMenu
           syncStatus={syncStatus}

@@ -137,17 +137,51 @@ export async function redeemInvite(code: string): Promise<{ friendId: string }> 
 
 // ---------- my profile ----------
 
-export async function fetchMyProfile(): Promise<Profile | null> {
+/**
+ * Last profile we saw, kept for the life of the tab.
+ *
+ * Opening the profile dialog used to cost two network round-trips every time:
+ * auth.getUser() validates the token against the server, then the row itself
+ * is fetched. Neither result was remembered, so the form sat empty for a beat
+ * on every open even though nothing had changed.
+ */
+let profileCache: Profile | null | undefined;
+let profileInFlight: Promise<Profile | null> | null = null;
+
+/** Drop the cache — after a save, or on sign-out. */
+export function clearProfileCache() {
+  profileCache = undefined;
+  profileInFlight = null;
+}
+
+export async function fetchMyProfile(force = false): Promise<Profile | null> {
   if (!cloudEnabled || !supabase) return null;
-  const user = await currentUser();
-  if (!user) return null;
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, display_name, avatar_emoji, avatar_color')
-    .eq('id', user.id)
-    .maybeSingle();
-  if (error) throw error;
-  return (data as Profile) ?? null;
+  if (!force && profileCache !== undefined) return profileCache;
+  // Two mounts in the same tick (StrictMode, or the chip plus the dialog)
+  // should share one request rather than racing.
+  if (!force && profileInFlight) return profileInFlight;
+
+  profileInFlight = (async () => {
+    // getSession() reads the session already in storage; getUser() would go to
+    // the network just to hand back an id we already have.
+    const { data: s } = await supabase!.auth.getSession();
+    const uid = s.session?.user?.id;
+    if (!uid) return null;
+    const { data, error } = await supabase!
+      .from('profiles')
+      .select('id, display_name, avatar_emoji, avatar_color')
+      .eq('id', uid)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as Profile) ?? null;
+  })();
+
+  try {
+    profileCache = await profileInFlight;
+    return profileCache;
+  } finally {
+    profileInFlight = null;
+  }
 }
 
 export async function saveMyProfile(p: {
@@ -156,12 +190,15 @@ export async function saveMyProfile(p: {
   avatar_color?: string;
 }): Promise<void> {
   const sb = requireCloud();
-  const user = await currentUser();
-  if (!user) throw new Error('not_signed_in');
+  const { data: s } = await sb.auth.getSession();
+  const uid = s.session?.user?.id;
+  if (!uid) throw new Error('not_signed_in');
   const { error } = await sb
     .from('profiles')
-    .upsert({ id: user.id, ...p, updated_at: new Date().toISOString() });
+    .upsert({ id: uid, ...p, updated_at: new Date().toISOString() });
   if (error) throw error;
+  // Write through, so reopening shows what was just saved without a refetch.
+  profileCache = { id: uid, ...profileCache, ...p } as Profile;
 }
 
 // ---------- friends ----------
