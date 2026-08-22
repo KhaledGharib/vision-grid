@@ -156,6 +156,14 @@ interface Store extends AppState {
   visions: () => BoardElement[];
   currentMonthGoals: () => MonthGoal[];
   currentWeekGoals: () => WeekGoal[];
+  /** Week goals actually started this week — these are what the cap counts. */
+  thisWeekGoals: () => WeekGoal[];
+  /** Still-open goals from earlier weeks. Shown, but outside the cap. */
+  carriedWeekGoals: () => WeekGoal[];
+  /** Month goals started this month — what the month cap counts. */
+  thisMonthGoals: () => MonthGoal[];
+  /** Still-open month goals from earlier months. Shown, but outside the cap. */
+  carriedMonthGoals: () => MonthGoal[];
   todayTasks: () => Task[];
   visionForTask: (t: Task) => BoardElement | undefined;
   visionProgress: (visionId: string) => { done: number; total: number };
@@ -629,7 +637,7 @@ export const useStore = create<Store>((set, get) => {
     // ---------- goals (chain rules unchanged) ----------
     addMonthGoal: (visionId, title) => {
       if (!visionId || !title.trim()) return null;
-      if (get().currentMonthGoals().length >= MAX_MONTH_GOALS) return null;
+      if (get().thisMonthGoals().length >= MAX_MONTH_GOALS) return null;
       push();
       const g: MonthGoal = { id: nanoid(), visionId, title: title.trim(),
         monthKey: monthKey(), status: 'active', createdAt: now() };
@@ -639,7 +647,7 @@ export const useStore = create<Store>((set, get) => {
     },
     addWeekGoal: (monthGoalId, title) => {
       if (!monthGoalId || !title.trim()) return null;
-      if (get().currentWeekGoals().length >= MAX_WEEK_GOALS) return null;
+      if (get().thisWeekGoals().length >= MAX_WEEK_GOALS) return null;
       push();
       const w: WeekGoal = { id: nanoid(), monthGoalId, title: title.trim(),
         weekKey: weekKey(), status: 'active', createdAt: now() };
@@ -724,7 +732,7 @@ export const useStore = create<Store>((set, get) => {
     reopenMonthGoal: (id) => {
       // Reopening must respect the cap — otherwise close-then-reopen is a
       // trivial way to get 4/3 and the whole constraint stops meaning anything.
-      if (get().currentMonthGoals().length >= MAX_MONTH_GOALS) return;
+      if (get().thisMonthGoals().length >= MAX_MONTH_GOALS) return;
       push();
       set((s) => ({
         monthGoals: s.monthGoals.map((g) =>
@@ -742,7 +750,7 @@ export const useStore = create<Store>((set, get) => {
       persistNow();
     },
     reopenWeekGoal: (id) => {
-      if (get().currentWeekGoals().length >= MAX_WEEK_GOALS) return;
+      if (get().thisWeekGoals().length >= MAX_WEEK_GOALS) return;
       push();
       set((s) => ({
         weekGoals: s.weekGoals.map((w) =>
@@ -866,6 +874,14 @@ export const useStore = create<Store>((set, get) => {
       return s.weekGoals.filter(
         (w) => w.status === 'active' && w.weekKey <= wk && mgIds.has(w.monthGoalId));
     },
+    // The cap means "how many did I commit to THIS week", not "how many are
+    // open in total". Counting carried-over goals made the header read 10/2
+    // and blocked adding anything new — the cap punished a backlog instead of
+    // limiting new commitments.
+    thisWeekGoals: () => get().currentWeekGoals().filter((w) => w.weekKey === weekKey()),
+    carriedWeekGoals: () => get().currentWeekGoals().filter((w) => w.weekKey !== weekKey()),
+    thisMonthGoals: () => get().currentMonthGoals().filter((g) => g.monthKey === monthKey()),
+    carriedMonthGoals: () => get().currentMonthGoals().filter((g) => g.monthKey !== monthKey()),
     todayTasks: () => {
       const s = get();
       const wgIds = new Set(s.currentWeekGoals().map((w) => w.id));

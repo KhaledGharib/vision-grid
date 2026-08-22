@@ -290,6 +290,14 @@ export const STRINGS = {
     en: 'Mark finished — frees a slot for a new goal',
     ar: 'وسّمه كمنجَز — يفتح خانة لهدف جديد',
   },
+  addWeekGoalHere: { en: '+ Week goal', ar: '+ هدف أسبوعي' },
+  weekGoalUnder: { en: 'Week goal under', ar: 'هدف أسبوعي تحت' },
+  weekCapHitHere: {
+    en: "Both week goals are taken. Finish one first.",
+    ar: 'هدفا الأسبوع محجوزان. خلّص واحدًا أولاً.',
+  },
+  carriedOver: { en: 'Carried over', ar: 'مُرحَّل' },
+  fromWeek: { en: 'from', ar: 'من' },
   capWayOut: {
     en: 'Tick off every task under a goal and you can close it — that frees the slot.',
     ar: 'أنجز كل المهام تحت أي هدف وستقدر تسكّره — وهذا يفتح الخانة.',

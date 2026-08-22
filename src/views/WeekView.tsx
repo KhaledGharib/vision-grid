@@ -20,6 +20,7 @@ export default function WeekView() {
   useStoreData();
   const monthGoals = useStore((s) => s.currentMonthGoals)();
   const weekGoals = useStore((s) => s.currentWeekGoals)();
+  const thisWeek = useStore((s) => s.thisWeekGoals)();
   const allEls = useStore((s) => s.elements);
   const allMonthGoals = useStore((s) => s.monthGoals);
   const tasks = useStore((s) => s.tasks);
@@ -40,7 +41,7 @@ export default function WeekView() {
   const [adding, setAdding] = useState(false);
   const t = useT();
 
-  const full = weekGoals.length >= MAX_WEEK_GOALS;
+  const full = thisWeek.length >= MAX_WEEK_GOALS;
 
   const submit = () => {
     if (addWeekGoal(mgId, title)) {
@@ -57,7 +58,7 @@ export default function WeekView() {
         <h2 className="flex items-center gap-2">
           {t('thisWeek')} · {weekKey()}
           <Badge variant={full ? 'accent' : 'default'}>
-            {weekGoals.length}/{MAX_WEEK_GOALS} {t('goals')}
+            {thisWeek.length}/{MAX_WEEK_GOALS} {t('goals')}
           </Badge>
           <Coach id="week" title={t('coachWeekTitle')}>
             <p>{t('coachWeekBody')}</p>

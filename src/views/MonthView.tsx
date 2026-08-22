@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStore, useStoreData } from '../store';
-import { MAX_MONTH_GOALS } from '../types';
-import { monthKey, monthLabel } from '../dates';
+import { MAX_MONTH_GOALS, MAX_WEEK_GOALS } from '../types';
+import { monthKey, monthLabel, weekKey } from '../dates';
 import { Coach, Example } from './Coach';
 import { useT } from '../useT';
 import Ask, { type AskState } from './Ask';
@@ -45,13 +45,30 @@ export default function MonthView() {
   const reopenMonthGoal = useStore((s) => s.reopenMonthGoal);
   const monthGoalAllDone = useStore((s) => s.monthGoalAllDone);
   const weekGoals = useStore((s) => s.weekGoals);
+  const addWeekGoal = useStore((s) => s.addWeekGoal);
+  const thisWeekGoals = useStore((s) => s.thisWeekGoals)();
+  const thisMonthGoals = useStore((s) => s.thisMonthGoals)();
   const [title, setTitle] = useState('');
   const [visionId, setVisionId] = useState('');
   const t = useT();
   const [ask, setAsk] = useState<AskState>(null);
   const [adding, setAdding] = useState(false);
+  /** id of the month goal whose inline "week goal" form is open */
+  const [wgFor, setWgFor] = useState<string | null>(null);
+  const [wgTitle, setWgTitle] = useState('');
 
-  const full = goals.length >= MAX_MONTH_GOALS;
+  const full = thisMonthGoals.length >= MAX_MONTH_GOALS;
+  const weekFull = thisWeekGoals.length >= MAX_WEEK_GOALS;
+
+  // Adding a week goal used to mean: leave this card, switch to the Week tab,
+  // then pick this same goal back out of a dropdown. The app already knows
+  // which goal you meant.
+  const submitWeekGoal = (monthGoalId: string) => {
+    if (addWeekGoal(monthGoalId, wgTitle)) {
+      setWgTitle('');
+      setWgFor(null);
+    }
+  };
 
   const submit = () => {
     if (addMonthGoal(visionId, title)) {
@@ -68,7 +85,7 @@ export default function MonthView() {
         <h2 className="flex items-center gap-2">
           {monthLabel(monthKey(), t.lang)}
           <Badge variant={full ? 'accent' : 'default'}>
-            {goals.length}/{MAX_MONTH_GOALS} {t('goals')}
+            {thisMonthGoals.length}/{MAX_MONTH_GOALS} {t('goals')}
           </Badge>
           <Coach id="month" title={t('coachMonthTitle')}>
             <p>{t('coachMonthBody')}</p>
@@ -132,6 +149,54 @@ export default function MonthView() {
                       {t('closeIt')}
                     </Button>
                   </div>
+                )}
+
+                {/* the week goals hanging off this month goal, in place */}
+                {wks.filter((w) => w.status === 'active').map((w) => (
+                  <div
+                    key={w.id}
+                    className="mt-1.5 flex items-center gap-2 border-t border-white/[.05] pt-1.5 ps-[52px] text-[13px] text-[#8b93a4]"
+                  >
+                    <span className="opacity-60">🗓</span>
+                    <span className="min-w-0 flex-1 truncate">{w.title}</span>
+                    {w.weekKey !== weekKey() && (
+                      <Badge>{t('fromWeek')} {w.weekKey}</Badge>
+                    )}
+                  </div>
+                ))}
+
+                {wgFor === g.id ? (
+                  <div className="mt-2.5 flex gap-2 border-t border-white/[.05] pt-2.5">
+                    <Input
+                      autoFocus
+                      value={wgTitle}
+                      placeholder={t('weekGoalPlaceholder')}
+                      onChange={(e) => setWgTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') submitWeekGoal(g.id);
+                        if (e.key === 'Escape') { setWgFor(null); setWgTitle(''); }
+                      }}
+                    />
+                    <Button
+                      variant="primary"
+                      disabled={!wgTitle.trim()}
+                      onClick={() => submitWeekGoal(g.id)}
+                    >
+                      {t('add')}
+                    </Button>
+                    <Button variant="ghost" onClick={() => { setWgFor(null); setWgTitle(''); }}>
+                      {t('cancel')}
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    className="btn-reset mt-2 ms-[52px] rounded-md px-2 py-1 text-[12.5px] text-[#8b93a4] transition-colors hover:bg-[#f0b429]/10 hover:text-[#f0b429] disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={weekFull}
+                    title={weekFull ? t('weekCapHitHere') : undefined}
+                    onClick={() => { setWgFor(g.id); setWgTitle(''); }}
+                  >
+                    {t('addWeekGoalHere')}
+                  </button>
                 )}
               </Card>
             );
