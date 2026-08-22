@@ -25,9 +25,9 @@ export default function Guide({ onClose }: { onClose: () => void }) {
   const steps = [
     { n: 1, tab: t('tabBoard'), title: t('guideStep1Title'), body: t('guideStep1Body'),
       hint: t('guideStep1Hint'), done: visions.length > 0 },
-    { n: 2, tab: t('tabMonth'), title: t('guideStep2Title'), body: t('guideStep2Body'),
+    { n: 2, tab: t('tabPlan'), title: t('guideStep2Title'), body: t('guideStep2Body'),
       hint: t('guideStep2Hint'), done: monthGoals.length > 0 },
-    { n: 3, tab: t('tabWeek'), title: t('guideStep3Title'), body: t('guideStep3Body'),
+    { n: 3, tab: t('tabPlan'), title: t('guideStep3Title'), body: t('guideStep3Body'),
       hint: t('guideStep3Hint'), done: weekGoals.length > 0 },
     { n: 4, tab: t('tabToday'), title: t('guideStep4Title'), body: t('guideStep4Body'),
       hint: t('guideStep4Hint'), done: tasks.length > 0 },

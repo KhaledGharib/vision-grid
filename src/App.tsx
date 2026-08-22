@@ -5,8 +5,7 @@ import { sweepOrphanImages } from './storage';
 import { dayKey } from './dates';
 import { LogoDiamond } from './icons';
 import BoardView from './views/BoardView';
-import MonthView from './views/MonthView';
-import WeekView from './views/WeekView';
+import PlanView from './views/PlanView';
 import TodayView from './views/TodayView';
 import Guide, { guideSeen, markGuideSeen } from './views/Guide';
 import Ask, { type AskState } from './views/Ask';
@@ -22,7 +21,7 @@ import { useSync } from './useSync';
 import { cloudEnabled } from './cloud';
 import { deleteRemoteImages } from './sync';
 
-type Tab = 'board' | 'month' | 'week' | 'today' | 'archive' | 'circle';
+type Tab = 'board' | 'plan' | 'today' | 'archive' | 'circle';
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('board');
@@ -107,7 +106,7 @@ export default function App() {
   }, [flush]);
 
   const tabLabel: Record<Tab, ReturnType<typeof t>> = {
-    board: t('tabBoard'), month: t('tabMonth'), week: t('tabWeek'),
+    board: t('tabBoard'), plan: t('tabPlan'),
     today: t('tabToday'), archive: t('tabArchive'), circle: t('tabCircle'),
   };
   const signedIn =
@@ -123,7 +122,7 @@ export default function App() {
         </span>
 
         <div className="tabs">
-          {(['board', 'month', 'week', 'today', 'archive', ...(cloudEnabled ? ['circle' as Tab] : [])] as Tab[]).map((id) => (
+          {(['board', 'plan', 'today', 'archive', ...(cloudEnabled ? ['circle' as Tab] : [])] as Tab[]).map((id) => (
             <button
               key={id}
               className={`tab${tab === id ? ' active' : ''}`}
@@ -159,8 +158,7 @@ export default function App() {
       </div>
 
       {tab === 'board' && <BoardView />}
-      {tab === 'month' && <MonthView />}
-      {tab === 'week' && <WeekView />}
+      {tab === 'plan' && <PlanView />}
       {tab === 'today' && <TodayView />}
       {tab === 'archive' && <ArchiveView />}
       {tab === 'circle' && <CircleView signedIn={signedIn} />}

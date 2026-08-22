@@ -290,6 +290,18 @@ export const STRINGS = {
     en: 'Mark finished — frees a slot for a new goal',
     ar: 'وسّمه كمنجَز — يفتح خانة لهدف جديد',
   },
+  tabPlan: { en: 'Plan', ar: 'خطتي' },
+  planBlurb: {
+    en: 'Your month goals, the weekly slices under them, and today\'s tasks — one chain.',
+    ar: 'أهداف شهرك، والشرائح الأسبوعية تحتها، ومهام اليوم — سلسلة واحدة.',
+  },
+  monthCap: { en: 'month', ar: 'شهر' },
+  weekCap: { en: 'week', ar: 'أسبوع' },
+  addTaskHere: { en: '+ Task', ar: '+ مهمة' },
+  mitCapHit: { en: 'Already 3 starred today.', ar: 'ثلاث مهام مُنجَّمة اليوم بالفعل.' },
+  expandAll: { en: 'Expand all', ar: 'افتح الكل' },
+  collapseAll: { en: 'Collapse all', ar: 'اطوِ الكل' },
+  noWeekGoalsUnder: { en: 'No weekly slice yet', ar: 'لا شريحة أسبوعية بعد' },
   addWeekGoalHere: { en: '+ Week goal', ar: '+ هدف أسبوعي' },
   weekGoalUnder: { en: 'Week goal under', ar: 'هدف أسبوعي تحت' },
   weekCapHitHere: {
